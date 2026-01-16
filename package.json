@@ -1,8 +1,12 @@
 {
   "name": "gastown-gui",
   "version": "0.1.0",
-  "description": "Web GUI for Gas Town multi-agent orchestrator",
+  "description": "Web GUI for Gas Town multi-agent orchestrator - A companion interface for steveyegge/gastown",
   "type": "module",
+  "main": "server.js",
+  "bin": {
+    "gastown-gui": "./bin/cli.js"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js --dev",
@@ -10,7 +14,8 @@
     "test:unit": "PORT=5678 vitest run --config vitest.unit.config.js",
     "test:e2e": "PORT=5678 vitest run test/e2e.test.js",
     "test:watch": "PORT=5678 vitest watch",
-    "test:ui": "PORT=5678 vitest run --ui"
+    "test:ui": "PORT=5678 vitest run --ui",
+    "prepublishOnly": "npm test"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -24,5 +29,42 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/web3dev1337/gastown-gui.git"
+  },
+  "homepage": "https://github.com/web3dev1337/gastown-gui#readme",
+  "bugs": {
+    "url": "https://github.com/web3dev1337/gastown-gui/issues"
+  },
+  "keywords": [
+    "gastown",
+    "gui",
+    "claude",
+    "multi-agent",
+    "orchestrator",
+    "cli",
+    "web-interface"
+  ],
+  "author": "web3dev1337",
+  "license": "MIT",
+  "peerDependencies": {
+    "@gastown/gt": ">=0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@gastown/gt": {
+      "optional": true
+    }
+  },
+  "files": [
+    "bin/",
+    "css/",
+    "js/",
+    "assets/",
+    "index.html",
+    "server.js",
+    "start.sh",
+    "README.md"
+  ]
 }

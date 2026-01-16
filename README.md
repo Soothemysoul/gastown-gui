@@ -1,19 +1,135 @@
 # Gas Town GUI
 
-A web-based graphical interface for [Gas Town](https://github.com/steveyegge/gastown) - the multi-agent orchestration system for Claude Code.
+A standalone web GUI for [Gas Town](https://github.com/steveyegge/gastown) - the multi-agent orchestration system for Claude Code.
 
-## Overview
+> **Note:** This is an independent companion project, not part of the official Gas Town repository. Originally submitted as [PR #212](https://github.com/steveyegge/gastown/pull/212), now maintained as a standalone package per Steve's recommendation.
 
-This GUI provides a browser-based interface to Gas Town's command-line tools (`gt` and `bd`), making it easier to:
+**Status:** 🚧 **Candidate for Testing** - Provides a solid starting point for a Gas Town GUI interface.
 
-- **Manage Rigs** - Add, view, and organize project repositories
-- **Track Work** - Create and manage work items (beads)
-- **Assign Tasks** - Sling work to rigs and agents
-- **Monitor Activity** - View live updates via WebSocket
-- **Browse PRs** - See GitHub pull requests across projects
-- **Inspect Mail** - Read messages from agents and polecats
+---
 
-**Status:** 🚧 **Candidate for Testing** - Not 100% tested, may be missing features, but provides a solid starting point for a Gas Town GUI.
+## Quick Start
+
+### 1. Install Prerequisites
+
+```bash
+# Gas Town CLI (required)
+npm install -g @gastown/gt
+# Or: go install github.com/steveyegge/gastown/cmd/gt@latest
+
+# GitHub CLI (optional, for PR tracking)
+gh auth login
+```
+
+### 2. Install Gas Town GUI
+
+```bash
+# Via npm (recommended)
+npm install -g gastown-gui
+
+# Or from source
+git clone https://github.com/web3dev1337/gastown-gui.git
+cd gastown-gui
+npm install
+npm link
+```
+
+### 3. Start the GUI
+
+```bash
+gastown-gui start --open
+```
+
+Opens `http://localhost:3000` in your browser.
+
+### 4. Verify Setup
+
+```bash
+gastown-gui doctor
+```
+
+---
+
+## Features
+
+- **Rig Management** - Add, view, and organize project repositories
+- **Work Tracking** - Create and manage work items (beads)
+- **Task Assignment** - Sling work to rigs and agents
+- **Real-Time Updates** - Live WebSocket updates for all operations
+- **PR Tracking** - View GitHub pull requests across projects
+- **Mail Inbox** - Read messages from agents and polecats
+- **Health Monitoring** - Run doctor checks and view system status
+
+---
+
+## CLI Usage
+
+```bash
+# Start server (default port 3000)
+gastown-gui
+
+# Custom port
+gastown-gui start --port 4000
+
+# Open browser automatically
+gastown-gui start --open
+
+# Development mode
+gastown-gui start --dev
+
+# Check prerequisites
+gastown-gui doctor
+
+# Show version
+gastown-gui version
+
+# Show help
+gastown-gui help
+```
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--port, -p` | Server port | 3000 |
+| `--host, -h` | Server host | 127.0.0.1 |
+| `--open, -o` | Open browser | false |
+| `--dev` | Development mode | false |
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Server port | 3000 |
+| `HOST` | Server host | 127.0.0.1 |
+| `GT_ROOT` | Gas Town root directory | ~/gt |
+
+---
+
+## How It Works
+
+The GUI acts as a **bridge** between your browser and the Gas Town CLI:
+
+```
+┌─────────────┐
+│   Browser   │
+│   (Client)  │
+└──────┬──────┘
+       │ HTTP API / WebSocket
+       ↓
+┌─────────────┐
+│  gastown-   │
+│  gui server │
+└──────┬──────┘
+       │ subprocess (gt, bd, gh)
+       ↓
+┌─────────────┐
+│   ~/gt/     │
+│  workspace  │
+└─────────────┘
+```
+
+All operations execute through the official `gt` and `bd` commands - the GUI never directly modifies Gas Town's internal state.
 
 ---
 
@@ -24,8 +140,7 @@ This GUI provides a browser-based interface to Gas Town's command-line tools (`g
 - **Backend:** Node.js + Express
 - **Frontend:** Vanilla JavaScript (no framework)
 - **Communication:** WebSocket for real-time updates
-- **Rendering:** Server-side GT/BD JSON parsing + client-side DOM updates
-- **Testing:** Puppeteer E2E tests
+- **Testing:** Vitest + Puppeteer E2E tests
 
 ### Design Principles
 
@@ -37,257 +152,73 @@ This GUI provides a browser-based interface to Gas Town's command-line tools (`g
 
 ---
 
-## File Structure
+## API Endpoints
 
-```
-gui/
-├── server.js                 # Express + WebSocket server
-├── index.html                # Main HTML (single page)
-├── css/
-│   └── styles.css           # All styles
-├── js/
-│   ├── app.js               # Main app initialization
-│   ├── api.js               # Server API client
-│   ├── websocket.js         # WebSocket handler
-│   └── components/
-│       ├── dashboard.js     # Dashboard view (overview)
-│       ├── rigs.js          # Rigs list view
-│       ├── work.js          # Work items view
-│       ├── modals.js        # Modal dialogs
-│       ├── pr-list.js       # Pull requests view
-│       └── toasts.js        # Toast notifications
-├── test-ui-flow.cjs         # Puppeteer E2E test
-└── test-ui-flow.README.md   # Test documentation
-```
-
----
-
-## How It Works
-
-### 1. Server (server.js)
-
-The server acts as a **bridge between the web UI and Gas Town CLI tools**.
-
-**Key Functions:**
-
-```javascript
-// Execute GT commands
-async function executeGT(args, options = {})
-  → Runs: gt <args>
-  → Returns: { success, data, error }
-
-// Execute BD commands
-async function executeBD(args, options = {})
-  → Runs: bd <args>
-  → Returns: { success, data, error }
-
-// WebSocket broadcast
-function broadcast(message)
-  → Sends to all connected clients
-  → Used for: rig_added, status_update, etc.
-```
-
-**API Endpoints:**
-
-| Method | Endpoint | Action | GT/BD Command |
-|--------|----------|--------|---------------|
-| GET | `/api/status` | Get system status | `gt status --json --fast` |
+| Method | Endpoint | Description | CLI Command |
+|--------|----------|-------------|-------------|
+| GET | `/api/status` | System status | `gt status --json` |
 | GET | `/api/rigs` | List rigs | `gt rig list` |
-| POST | `/api/rigs` | Add rig | `gt rig add <name> <url>` |
-| GET | `/api/work` | List work items | `bd list --status=open --json` |
-| POST | `/api/work` | Create work item | `bd new <title> --priority=<P> --label=<L>` |
-| POST | `/api/sling` | Sling work to rig | `gt sling <bead> <target> --quality=<Q>` |
-| GET | `/api/prs` | List PRs | `gh pr list --repo <R>` |
-| GET | `/api/mail` | Get mail inbox | `gt mail inbox --json` |
+| POST | `/api/rigs` | Add rig | `gt rig add` |
+| GET | `/api/work` | List work items | `bd list` |
+| POST | `/api/work` | Create work | `bd new` |
+| POST | `/api/sling` | Sling work | `gt sling` |
+| GET | `/api/prs` | GitHub PRs | `gh pr list` |
+| GET | `/api/mail` | Mail inbox | `gt mail inbox` |
+| GET | `/api/doctor` | Health check | `gt doctor` |
 
-**Configuration:**
+---
 
-```javascript
-const PORT = process.env.PORT || 3000;
-const GT_ROOT = process.env.GT_ROOT || path.join(HOME, 'gt');
-```
-
-### 2. Frontend Architecture
-
-**Single Page Application** with view-based routing:
+## Project Structure
 
 ```
-Views:
-├── Dashboard    - System overview (rigs, agents, recent activity)
-├── Rigs         - List all rigs, add new rigs
-├── Work         - List work items, create new work, sling
-├── PRs          - GitHub pull requests across repos
-├── Formulas     - Available formulas (gt formula list)
-└── Mail         - Agent/polecat messages
-```
-
-**State Management:**
-
-```javascript
-// Global state in js/app.js
-window.appState = {
-  currentView: 'dashboard',
-  status: {},           // GT status
-  rigs: [],            // Rig list
-  work: [],            // Work items
-  prs: [],             // Pull requests
-  loading: false
-};
-```
-
-**View Rendering Pattern:**
-
-```javascript
-// Each view component exports:
-export function renderRigsView(container, data) {
-  container.innerHTML = generateHTML(data);
-  attachEventListeners();
-}
-```
-
-### 3. WebSocket Communication
-
-**Server → Client Events:**
-
-```javascript
-// Connection established
-{ type: 'connected' }
-
-// Rig added successfully
-{ type: 'rig_added', data: { name, url } }
-
-// Status update
-{ type: 'status_update', data: { ... } }
-
-// Activity stream (live feed)
-{ type: 'activity', data: { message } }
-```
-
-**Client Handling:**
-
-```javascript
-ws.on('message', (data) => {
-  switch (data.type) {
-    case 'rig_added':
-      // Refresh rigs list
-      fetchRigs();
-      break;
-    case 'status_update':
-      // Update dashboard
-      updateStatus(data.data);
-      break;
-  }
-});
-```
-
-### 4. Non-Blocking Operations
-
-**Problem:** Operations like `gt rig add` take 90+ seconds (git clone).
-
-**Solution:** Modal closes immediately, operation runs in background.
-
-**Flow:**
-
-```
-User clicks "Add Rig"
-  → Modal opens
-  → User fills form
-  → User clicks "Add"
-  → Modal closes immediately ✓
-  → Toast: "Adding rig..."
-  → Server executes gt rig add (90s)
-  → Toast: "Rig added successfully" ✓
-  → WebSocket broadcast: rig_added
-  → All clients refresh
-```
-
-**Implementation:**
-
-```javascript
-// Frontend - modals.js
-async function handleRigAdd(name, url) {
-  closeModal();  // Close immediately
-  showToast(`Adding rig "${name}"...`, 'info');
-
-  const result = await api.addRig(name, url);
-
-  if (result.success) {
-    showToast(`Rig "${name}" added successfully`, 'success');
-  } else {
-    showToast(`Failed: ${result.error}`, 'error');
-  }
-}
-```
-
-### 5. Data Flow Diagram
-
-```
-┌─────────────┐
-│   Browser   │
-│   (Client)  │
-└──────┬──────┘
-       │ HTTP API calls
-       │ WebSocket events
-       ↓
-┌─────────────┐
-│   Express   │
-│   Server    │
-└──────┬──────┘
-       │ executeGT()
-       │ executeBD()
-       ↓
-┌─────────────┐
-│  GT / BD    │
-│  CLI Tools  │
-└──────┬──────┘
-       │
-       ↓
-┌─────────────┐
-│  ~/gt/      │
-│  Database   │
-└─────────────┘
+gastown-gui/
+├── bin/cli.js           # CLI entry point
+├── server.js            # Express + WebSocket server
+├── index.html           # Main HTML (single page)
+├── css/                 # Stylesheets
+│   ├── variables.css
+│   ├── reset.css
+│   ├── layout.css
+│   ├── components.css
+│   └── animations.css
+├── js/
+│   ├── app.js           # Main app entry
+│   ├── api.js           # API client
+│   ├── state.js         # State management
+│   └── components/      # UI components
+│       ├── dashboard.js
+│       ├── rig-list.js
+│       ├── work-list.js
+│       ├── pr-list.js
+│       ├── mail-list.js
+│       └── ...
+├── test/
+│   ├── unit/            # Unit tests
+│   └── e2e.test.js      # E2E tests
+└── assets/              # Favicons, icons
 ```
 
 ---
 
-## Key Features
+## Testing
 
-### ✅ Implemented
+```bash
+# All tests
+npm test
 
-**Rig Management:**
-- List all rigs with status (polecats, crew, agents)
-- Add new rig (git clone with 120s timeout)
-- View rig details
-- GitHub repo picker integration
+# Unit tests only
+npm run test:unit
 
-**Work Management:**
-- List work items (open/closed)
-- Create new work items (title, description, priority, labels)
-- Filter by status
-- Priority mapping: urgent/high/normal/low → P0-P4
+# E2E tests
+npm run test:e2e
 
-**Sling Workflow:**
-- Select work item
-- Choose target (rig or agent)
-- Select quality (basic/shiny/chrome)
-- Execute sling command
+# Watch mode
+npm run test:watch
+```
 
-**Real-Time Updates:**
-- WebSocket connection status indicator
-- Live activity feed
-- Auto-refresh on rig creation
-- Toast notifications for all operations
+---
 
-**PR Tracking:**
-- List GitHub PRs across repos
-- Filter by state (open/merged/closed)
-- Link to GitHub
-
-**Mail Inbox:**
-- View messages from agents
-- Parse structured events (.events.jsonl)
-
-### ⚠️ Known Limitations
+## Known Limitations
 
 **Not Yet Implemented:**
 - Polecat management (spawn, kill, view logs)
@@ -297,399 +228,46 @@ async function handleRigAdd(name, url) {
 - Crew management
 - Rig removal/deletion
 - Work item editing
-- Beads detail view
-- Session attachment/detachment
 
 **Known Issues:**
-- GT CLI bug: `gt sling` fails with "mol bond requires direct database access"
-  - Root cause: Missing `--no-daemon` flag in GT CLI
-  - Not a GUI issue - documented in E2E test
-- Error handling could be more granular
+- GT CLI sling may fail with "mol bond requires direct database access" (upstream issue)
 - Some edge cases untested
 
 ---
 
-## Installation & Setup
+## Compatibility
 
-### Prerequisites
+- **Gas Town:** v0.2.x and later
+- **Node.js:** 18, 20, 22
+- **Browsers:** Chrome, Firefox, Safari (latest)
 
-```bash
-# Gas Town CLI tools must be installed
-gt --version
-bd --version
-gh --version  # For PR tracking
-```
-
-### Install Dependencies
-
-```bash
-cd gui
-npm install
-```
-
-### Configuration
-
-**Environment Variables:**
-
-```bash
-export PORT=5555                    # Server port (default: 3000)
-export GT_ROOT=~/gt                 # Gas Town root (default: ~/gt)
-export CORS_ORIGINS=http://localhost:5555  # CORS allowed origins
-```
-
-**GitHub Integration:**
-
-For PR tracking, ensure GitHub CLI is authenticated:
-
-```bash
-gh auth status
-```
-
-### Run Server
-
-```bash
-cd gui
-PORT=5555 node server.js
-```
-
-Server starts on: `http://localhost:5555`
-
----
-
-## Usage
-
-### 1. Add a Rig
-
-**Via UI:**
-1. Navigate to "Rigs" view
-2. Click "Add Rig"
-3. Enter name (e.g., "my-project")
-4. Enter Git URL (e.g., "https://github.com/user/repo")
-5. Click "Add Rig"
-6. Wait for toast confirmation (~90 seconds for large repos)
-
-**Behind the scenes:**
-```bash
-gt rig add my-project https://github.com/user/repo
-```
-
-### 2. Create Work Item
-
-**Via UI:**
-1. Navigate to "Work" view
-2. Click "New Work Item"
-3. Fill in:
-   - Title (required)
-   - Description
-   - Priority (urgent/high/normal/low)
-   - Labels (comma-separated)
-4. Click "Create"
-
-**Behind the scenes:**
-```bash
-bd new "Fix authentication bug" \
-  --description "Users can't log in with Google" \
-  --priority P1 \
-  --label bug \
-  --label auth
-```
-
-### 3. Sling Work to Rig
-
-**Via UI:**
-1. Navigate to "Work" view
-2. Click "Sling" button
-3. Enter bead ID (e.g., "hq-abc")
-4. Select target (e.g., "my-project/witness")
-5. Select quality (basic/shiny/chrome)
-6. Click "Sling Work"
-
-**Behind the scenes:**
-```bash
-gt sling hq-abc my-project --quality=shiny
-```
-
-**Note:** This may fail with GT CLI bug (see Known Issues).
-
----
-
-## Testing
-
-### E2E Test Suite
-
-Comprehensive Puppeteer test validates:
-
-**Steps 1-10 (PASSING):**
-- ✅ Rig creation (90+ second timeout)
-- ✅ Work item creation
-- ✅ Toast notifications
-- ✅ UI state updates
-- ✅ Non-blocking operations
-
-**Steps 11-13 (KNOWN ISSUE):**
-- ✅ Sling modal opens and fills
-- ⚠️ GT CLI sling fails (external bug)
-
-**Run test:**
-
-```bash
-# Clean state
-cd ~/gt && gt rig remove zoo-game 2>/dev/null; rm -rf zoo-game
-
-# Run test
-cd gui
-node test-ui-flow.cjs
-```
-
-**Expected output:**
-```
-✅ GUI tests passed!
-
-Summary:
-  ✅ Created zoo-game rig
-  ✅ Created work item: hq-xyz
-  ✅ Opened sling modal and filled form
-  ⚠️  Sling attempted but failed due to GT CLI issue (not GUI bug)
-```
-
-See `test-ui-flow.README.md` for complete documentation.
-
----
-
-## Development
-
-### Code Style
-
-- **No frameworks** - Vanilla JS for simplicity
-- **Server-authoritative** - All logic via GT/BD CLI
-- **Modular views** - Each view is a separate component
-- **Async/await** - For all API calls
-- **Error handling** - Try/catch with user-friendly messages
-
-### Adding a New View
-
-1. Create component: `js/components/my-view.js`
-2. Export render function:
-   ```javascript
-   export function renderMyView(container, data) {
-     container.innerHTML = `<div>My View</div>`;
-   }
-   ```
-3. Add route in `js/app.js`:
-   ```javascript
-   case 'my-view':
-     renderMyView(container, appState.myData);
-     break;
-   ```
-4. Add navigation button in `index.html`
-
-### Adding an API Endpoint
-
-1. Add route in `server.js`:
-   ```javascript
-   app.get('/api/my-endpoint', async (req, res) => {
-     const result = await executeGT(['my', 'command']);
-     res.json(result);
-   });
-   ```
-2. Add client method in `js/api.js`:
-   ```javascript
-   async myEndpoint() {
-     return this.request('/api/my-endpoint');
-   }
-   ```
-
-### WebSocket Events
-
-**Server broadcasts:**
-```javascript
-broadcast({
-  type: 'my_event',
-  data: { ... }
-});
-```
-
-**Client handles:**
-```javascript
-// In js/websocket.js
-switch (data.type) {
-  case 'my_event':
-    handleMyEvent(data.data);
-    break;
-}
-```
-
----
-
-## Deployment
-
-### Production Considerations
-
-**Security:**
-- [ ] Add authentication (currently none)
-- [ ] Validate all user inputs
-- [ ] Rate limit API endpoints
-- [ ] Use HTTPS
-- [ ] Restrict CORS origins
-
-**Performance:**
-- [x] WebSocket for real-time updates
-- [x] Background data preloading
-- [x] Stale-while-revalidate cache pattern
-- [ ] Add Redis for caching
-- [ ] Compress responses
-
-**Reliability:**
-- [x] Graceful error handling
-- [x] Toast notifications for all operations
-- [ ] Add logging/monitoring
-- [ ] Health check endpoint
-- [ ] Automatic reconnection
-
-### Docker Deployment
-
-```dockerfile
-FROM node:18-alpine
-
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --production
-
-COPY . .
-
-ENV PORT=5555
-ENV GT_ROOT=/gt
-
-EXPOSE 5555
-CMD ["node", "server.js"]
-```
-
----
-
-## Troubleshooting
-
-### Server won't start
-
-**Error:** `EADDRINUSE: address already in use`
-
-**Solution:**
-```bash
-# Use different port
-PORT=5556 node server.js
-
-# Or kill existing process
-lsof -i :5555 | grep LISTEN | awk '{print $2}' | xargs kill
-```
-
-### Rig creation timeout
-
-**Error:** `Command timeout after 30000ms`
-
-**Cause:** Large repos take 90+ seconds to clone.
-
-**Solution:** Already fixed - timeout increased to 120s in server.js.
-
-### WebSocket disconnects
-
-**Symptom:** "Disconnected" indicator in top-right.
-
-**Causes:**
-- Server restarted
-- Network issue
-- Browser tab suspended
-
-**Solution:** Refresh page to reconnect.
-
-### GT commands fail
-
-**Error:** `Command not found: gt`
-
-**Solution:** Ensure GT CLI is installed and in PATH:
-```bash
-which gt
-gt --version
-```
-
-### Sling fails with "mol bond" error
-
-**Error:** `Error: mol bond requires direct database access`
-
-**Cause:** GT CLI bug (not GUI issue).
-
-**Workaround:**
-```bash
-# Manual sling with correct flags
-bd --no-daemon mol bond <bead-id> <formula-id>
-```
-
-See "Known Issues" section above.
-
----
-
-## Future Improvements
-
-### High Priority
-
-- [ ] **Authentication** - User login/sessions
-- [ ] **Polecat Management** - Spawn, kill, view logs, attach to tmux
-- [ ] **Error Recovery** - Retry failed operations
-- [ ] **Work Editing** - Update existing beads
-- [ ] **Rig Deletion** - Remove rigs safely
-
-### Medium Priority
-
-- [ ] **Convoy Management** - Create, view, manage convoys
-- [ ] **Formula Builder** - Create custom formulas via UI
-- [ ] **Agent Configuration** - Configure witness/refinery/mayor
-- [ ] **Crew Management** - Add/remove crew members
-- [ ] **Search & Filter** - Better work/rig filtering
-
-### Low Priority
-
-- [ ] **Dark Mode** - Theme switcher
-- [ ] **Keyboard Shortcuts** - Power user features
-- [ ] **Mobile Support** - Responsive design
-- [ ] **Notifications** - Browser notifications for events
-- [ ] **Analytics** - Usage tracking
+The GUI calls CLI commands via subprocess, so it should work with any Gas Town version that has compatible CLI output.
 
 ---
 
 ## Contributing
 
-This is a **candidate implementation** for Gas Town GUI. Feedback and improvements welcome!
+Contributions welcome!
 
-**Before submitting PRs:**
-1. Run E2E tests: `node test-ui-flow.cjs`
-2. Test manually with real GT installation
-3. Document any new features/limitations
-4. Follow existing code style
+1. Fork the repository
+2. Create a feature branch
+3. Run tests: `npm test`
+4. Submit a pull request
 
 ---
 
 ## License
 
-Same as Gas Town (MIT assumed - check upstream repo).
+MIT
 
 ---
 
 ## Credits
 
-**Original Gas Town:** [steveyegge/gastown](https://github.com/steveyegge/gastown)
-
-**GUI Implementation:** Built with Claude Code
-
-**Testing:** Puppeteer E2E test suite
+- **Gas Town:** [steveyegge/gastown](https://github.com/steveyegge/gastown) by Steve Yegge
+- **GUI Implementation:** Built with Claude Code
+- **Original PR:** [#212](https://github.com/steveyegge/gastown/pull/212)
 
 ---
 
-## Disclaimer
-
-⚠️ **This GUI is a candidate for testing, not a production-ready system.**
-
-- Not 100% tested
-- May be missing features
-- Not certain it works exactly as Steve intended
-- Presented as a starting point for what a Gas Town GUI could look like
-- Use at your own risk
-
-If this isn't the right direction, it can serve as reference for future GUI implementations.
+**Disclaimer:** This is an independent community project, not officially affiliated with Gas Town. Use at your own risk.
