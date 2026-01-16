@@ -17,7 +17,7 @@ The GUI wraps the `gt` CLI commands as HTTP endpoints. Here's the full mapping:
 | `GET /api/health` | (internal) | ✅ | Server health check |
 | `GET /api/setup/status` | `gt rig list` | ✅ | Setup wizard status |
 | `GET /api/doctor` | `gt doctor --json` | ✅ | Diagnostics |
-| `POST /api/doctor/fix` | `gt doctor --fix` | ❌ | Auto-fix issues |
+| `POST /api/doctor/fix` | `gt doctor --fix` | ✅ | Auto-fix issues |
 
 ### Convoy Management
 | GUI Endpoint | gt Command | Tested | Notes |
@@ -30,10 +30,10 @@ The GUI wraps the `gt` CLI commands as HTTP endpoints. Here's the full mapping:
 | GUI Endpoint | gt Command | Tested | Notes |
 |--------------|------------|--------|-------|
 | `GET /api/agents` | `gt status --json --fast` | ✅ | List agents |
-| `POST /api/sling` | `gt sling` | ❌ | **CRITICAL** - Spawn work |
+| `POST /api/sling` | `gt sling` | ✅ | **CRITICAL** - Spawn work |
 | `POST /api/nudge` | `gt nudge` | ✅ | Send nudge to agent |
-| `POST /api/escalate` | `gt escalate` | ❌ | Escalate issue |
-| `GET /api/targets` | `gt status --json --fast` | ❌ | Get sling targets |
+| `POST /api/escalate` | `gt escalate` | ✅ | Escalate issue |
+| `GET /api/targets` | `gt status --json --fast` | ✅ | Get sling targets |
 
 ### Polecat (Worker) Management
 | GUI Endpoint | gt Command | Tested | Notes |
@@ -54,8 +54,8 @@ The GUI wraps the `gt` CLI commands as HTTP endpoints. Here's the full mapping:
 | GUI Endpoint | gt Command | Tested | Notes |
 |--------------|------------|--------|-------|
 | `GET /api/rigs` | `gt rig list` | ✅ | List rigs |
-| `POST /api/rigs` | `gt rig add` | ❌ | Add rig |
-| `DELETE /api/rigs/:name` | `gt rig remove` | ❌ | Remove rig |
+| `POST /api/rigs` | `gt rig add` | ✅ | Add rig |
+| `DELETE /api/rigs/:name` | `gt rig remove` | ✅ | Remove rig |
 
 ### Mail System
 | GUI Endpoint | gt Command | Tested | Notes |
@@ -63,7 +63,7 @@ The GUI wraps the `gt` CLI commands as HTTP endpoints. Here's the full mapping:
 | `GET /api/mail` | `gt mail inbox --json` | ✅ | List inbox |
 | `GET /api/mail/all` | (internal) | ❌ | All mail |
 | `GET /api/mail/:id` | `gt mail read :id --json` | ❌ | Read mail |
-| `POST /api/mail` | `gt mail send` | ❌ | Send mail |
+| `POST /api/mail` | `gt mail send` | ✅ | Send mail |
 | `POST /api/mail/:id/read` | `gt mail mark-read` | ❌ | Mark read |
 | `POST /api/mail/:id/unread` | `gt mail mark-unread` | ❌ | Mark unread |
 
@@ -71,7 +71,7 @@ The GUI wraps the `gt` CLI commands as HTTP endpoints. Here's the full mapping:
 | GUI Endpoint | bd Command | Tested | Notes |
 |--------------|------------|--------|-------|
 | `GET /api/beads` | `bd list` | ✅ | List beads |
-| `GET /api/beads/search` | `bd search` | ❌ | Search beads |
+| `GET /api/beads/search` | `bd search` | ✅ | Search beads |
 | `POST /api/beads` | `bd create` | ❌ | Create bead |
 | `GET /api/bead/:id` | `bd show :id --json` | ❌ | Get bead |
 | `GET /api/bead/:id/links` | `bd show` + parse | ❌ | Get bead links |
@@ -84,7 +84,7 @@ The GUI wraps the `gt` CLI commands as HTTP endpoints. Here's the full mapping:
 | GUI Endpoint | bd Command | Tested | Notes |
 |--------------|------------|--------|-------|
 | `GET /api/formulas` | `bd formula list` | ❌ | List formulas |
-| `GET /api/formulas/search` | `bd formula search` | ❌ | Search |
+| `GET /api/formulas/search` | `bd formula search` | ✅ | Search |
 | `GET /api/formula/:name` | `bd formula show` | ❌ | Get formula |
 | `POST /api/formulas` | `bd formula create` | ❌ | Create formula |
 | `POST /api/formula/:name/use` | `bd cook` | ❌ | Execute formula |
@@ -100,7 +100,7 @@ The GUI wraps the `gt` CLI commands as HTTP endpoints. Here's the full mapping:
 ### Hook Management
 | GUI Endpoint | gt Command | Tested | Notes |
 |--------------|------------|--------|-------|
-| `GET /api/hook` | `gt hook status --json` | ❌ | Hook status |
+| `GET /api/hook` | `gt hook status --json` | ✅ | Hook status |
 
 ---
 
@@ -108,25 +108,25 @@ The GUI wraps the `gt` CLI commands as HTTP endpoints. Here's the full mapping:
 
 | Category | Tested | Total | Coverage |
 |----------|--------|-------|----------|
-| Core Status | 4 | 5 | 80% |
+| Core Status | 5 | 5 | 100% |
 | Convoy | 3 | 3 | 100% |
-| Agents | 2 | 5 | 40% |
+| Agents | 5 | 5 | 100% |
 | Polecat | 0 | 5 | 0% |
 | Mayor | 0 | 2 | 0% |
-| Rigs | 1 | 3 | 33% |
-| Mail | 1 | 6 | 17% |
-| Beads | 1 | 9 | 11% |
-| Formulas | 0 | 5 | 0% |
+| Rigs | 3 | 3 | 100% |
+| Mail | 2 | 6 | 33% |
+| Beads | 2 | 9 | 22% |
+| Formulas | 1 | 5 | 20% |
 | Services | 0 | 4 | 0% |
-| Hook | 0 | 1 | 0% |
-| **TOTAL** | **12** | **48** | **25%** |
+| Hook | 1 | 1 | 100% |
+| **TOTAL** | **22** | **48** | **46%** |
 
 ---
 
 ## Priority 1: Test Coverage (CRITICAL)
 
 ### Issue 1.1: Server Endpoint Tests
-**Status:** 🟡 PARTIAL (20/48 endpoints tested)
+**Status:** 🟡 PARTIAL (22/48 endpoints tested = 46%)
 **Impact:** HIGH - Many endpoints untested
 
 **Test file:** `test/integration/endpoints.test.js`
@@ -134,12 +134,12 @@ The GUI wraps the `gt` CLI commands as HTTP endpoints. Here's the full mapping:
 **Phase 1 - Core (DONE):**
 - [x] Status, health, convoys, mail, agents, rigs, beads, doctor
 
-**Phase 2 - Operations (TODO):**
-- [ ] `POST /api/sling` - **SECURITY CRITICAL** (command injection risk)
-- [ ] `POST /api/rigs` - Add rig
-- [ ] `DELETE /api/rigs/:name` - Remove rig
-- [ ] `POST /api/escalate` - Escalation
-- [ ] `GET /api/targets` - Sling targets
+**Phase 2 - Operations (DONE):**
+- [x] `POST /api/sling` - **SECURITY CRITICAL** (command injection risk)
+- [x] `POST /api/rigs` - Add rig
+- [x] `DELETE /api/rigs/:name` - Remove rig
+- [x] `POST /api/escalate` - Escalation
+- [x] `GET /api/targets` - Sling targets
 
 **Phase 3 - Polecat/Mayor (TODO):**
 - [ ] All polecat endpoints (spawn, stop, output)
@@ -225,6 +225,7 @@ The GUI wraps the `gt` CLI commands as HTTP endpoints. Here's the full mapping:
 | 2026-01-17 | 1.2 | Added 9 WebSocket tests | `e332003` |
 | 2026-01-17 | 1.3 | Added 10 cache tests | `17a24ae` |
 | 2026-01-17 | Docs | Added API coverage matrix | `0bfa364` |
+| 2026-01-17 | 1.1 | Added 19 more endpoint tests (39 total) | `549cc17` |
 
 ---
 
@@ -232,8 +233,8 @@ The GUI wraps the `gt` CLI commands as HTTP endpoints. Here's the full mapping:
 
 1. ~~**Issue 1.2** - WebSocket tests~~ ✅ DONE
 2. ~~**Issue 1.3** - Cache tests~~ ✅ DONE
-3. **Issue 1.1 Phase 2** - Test sling, rigs mutation, escalate
-4. **Issue 1.1 Phase 3** - Test polecat/mayor endpoints
-5. **Issue 1.1 Phase 4** - Test mail/beads CRUD
+3. ~~**Issue 1.1 Phase 2** - Test sling, rigs mutation, escalate~~ ✅ DONE
+4. **Issue 1.1 Phase 3** - Test polecat/mayor endpoints (0/7 done)
+5. **Issue 1.1 Phase 4** - Test mail/beads CRUD (4/15 done)
 6. **Issue 2.1** - Fix hardcoded repo references
 7. **Issue 3.x** - Add missing UI features
