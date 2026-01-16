@@ -340,6 +340,132 @@ app.get('/api/github/repos', (req, res) => {
   res.json(repos);
 });
 
+// Polecat (worker) management
+const mockPolecats = new Map([
+  ['zoo-game/polecat-1', { rig: 'zoo-game', name: 'polecat-1', status: 'running', started: new Date().toISOString() }],
+  ['gastown/worker-1', { rig: 'gastown', name: 'worker-1', status: 'idle', started: new Date(Date.now() - 3600000).toISOString() }],
+]);
+
+app.get('/api/polecat/:rig/:name/output', (req, res) => {
+  const { rig, name } = req.params;
+  const key = `${rig}/${name}`;
+  if (!mockPolecats.has(key)) {
+    return res.status(404).json({ error: 'Polecat not found' });
+  }
+  res.json({
+    output: `[${new Date().toISOString()}] Polecat ${name} running in ${rig}\n[INFO] Processing tasks...\n[INFO] Ready for work.`,
+    lines: 3,
+  });
+});
+
+app.get('/api/polecat/:rig/:name/transcript', (req, res) => {
+  const { rig, name } = req.params;
+  const key = `${rig}/${name}`;
+  if (!mockPolecats.has(key)) {
+    return res.status(404).json({ error: 'Polecat not found' });
+  }
+  res.json({
+    transcript: `Session started at ${new Date().toISOString()}\nUser: Start working on task\nAssistant: I'll begin working on that now...`,
+    messages: 2,
+  });
+});
+
+app.post('/api/polecat/:rig/:name/start', (req, res) => {
+  const { rig, name } = req.params;
+  const key = `${rig}/${name}`;
+  const polecat = { rig, name, status: 'running', started: new Date().toISOString() };
+  mockPolecats.set(key, polecat);
+  res.json({ success: true, polecat });
+});
+
+app.post('/api/polecat/:rig/:name/stop', (req, res) => {
+  const { rig, name } = req.params;
+  const key = `${rig}/${name}`;
+  if (!mockPolecats.has(key)) {
+    return res.status(404).json({ error: 'Polecat not found' });
+  }
+  mockPolecats.delete(key);
+  res.json({ success: true, stopped: key });
+});
+
+app.post('/api/polecat/:rig/:name/restart', (req, res) => {
+  const { rig, name } = req.params;
+  const key = `${rig}/${name}`;
+  const polecat = { rig, name, status: 'running', started: new Date().toISOString(), restarted: true };
+  mockPolecats.set(key, polecat);
+  res.json({ success: true, polecat });
+});
+
+// Mayor management
+let mayorMessages = [
+  { id: 1, type: 'user', content: 'Build a new feature', timestamp: new Date(Date.now() - 60000).toISOString() },
+  { id: 2, type: 'assistant', content: 'I will create a convoy for that task.', timestamp: new Date(Date.now() - 30000).toISOString() },
+];
+
+app.get('/api/mayor/output', (req, res) => {
+  res.json({
+    output: `[Mayor] Running since ${new Date(Date.now() - 3600000).toISOString()}\n[Mayor] Active convoys: 2\n[Mayor] Waiting for instructions...`,
+    lines: 3,
+  });
+});
+
+app.get('/api/mayor/messages', (req, res) => {
+  res.json(mayorMessages);
+});
+
+// Service management
+const mockServices = new Map([
+  ['mayor', { name: 'mayor', status: 'running', pid: 12345 }],
+  ['deacon', { name: 'deacon', status: 'running', pid: 12346 }],
+  ['witness', { name: 'witness', status: 'stopped', pid: null }],
+]);
+
+app.get('/api/service/:name/status', (req, res) => {
+  const { name } = req.params;
+  const service = mockServices.get(name);
+  if (!service) {
+    return res.status(404).json({ error: 'Service not found' });
+  }
+  res.json(service);
+});
+
+app.post('/api/service/:name/up', (req, res) => {
+  const { name } = req.params;
+  let service = mockServices.get(name);
+  if (!service) {
+    service = { name, status: 'running', pid: Math.floor(Math.random() * 10000) + 10000 };
+  } else {
+    service.status = 'running';
+    service.pid = Math.floor(Math.random() * 10000) + 10000;
+  }
+  mockServices.set(name, service);
+  res.json({ success: true, service });
+});
+
+app.post('/api/service/:name/down', (req, res) => {
+  const { name } = req.params;
+  const service = mockServices.get(name);
+  if (!service) {
+    return res.status(404).json({ error: 'Service not found' });
+  }
+  service.status = 'stopped';
+  service.pid = null;
+  res.json({ success: true, service });
+});
+
+app.post('/api/service/:name/restart', (req, res) => {
+  const { name } = req.params;
+  let service = mockServices.get(name);
+  if (!service) {
+    service = { name, status: 'running', pid: Math.floor(Math.random() * 10000) + 10000 };
+  } else {
+    service.status = 'running';
+    service.pid = Math.floor(Math.random() * 10000) + 10000;
+  }
+  mockServices.set(name, service);
+  res.json({ success: true, service, restarted: true });
+});
+
 // Create HTTP server
 const server = createServer(app);
 

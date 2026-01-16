@@ -464,6 +464,147 @@ describe('Doctor & Setup', () => {
   });
 });
 
+describe('Polecat Management', () => {
+  it('should get polecat output', async () => {
+    const { status, data, ok } = await api('/api/polecat/zoo-game/polecat-1/output');
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('output');
+    expect(data).toHaveProperty('lines');
+  });
+
+  it('should get polecat transcript', async () => {
+    const { status, data, ok } = await api('/api/polecat/zoo-game/polecat-1/transcript');
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('transcript');
+  });
+
+  it('should start a polecat', async () => {
+    const { status, data, ok } = await api('/api/polecat/test-rig/new-polecat/start', {
+      method: 'POST',
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data).toHaveProperty('polecat');
+    expect(data.polecat).toHaveProperty('status', 'running');
+  });
+
+  it('should stop a polecat', async () => {
+    // First start one
+    await api('/api/polecat/test-rig/stop-test/start', { method: 'POST' });
+
+    const { status, data, ok } = await api('/api/polecat/test-rig/stop-test/stop', {
+      method: 'POST',
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+  });
+
+  it('should restart a polecat', async () => {
+    const { status, data, ok } = await api('/api/polecat/test-rig/restart-test/restart', {
+      method: 'POST',
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data).toHaveProperty('polecat');
+  });
+
+  it('should return 404 for non-existent polecat output', async () => {
+    const { status } = await api('/api/polecat/fake-rig/fake-polecat/output');
+
+    expect(status).toBe(404);
+  });
+});
+
+describe('Mayor Management', () => {
+  it('should get mayor output', async () => {
+    const { status, data, ok } = await api('/api/mayor/output');
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('output');
+    expect(data).toHaveProperty('lines');
+  });
+
+  it('should get mayor messages', async () => {
+    const { status, data, ok } = await api('/api/mayor/messages');
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  it('should include message details', async () => {
+    const { data } = await api('/api/mayor/messages');
+
+    if (data.length > 0) {
+      const message = data[0];
+      expect(message).toHaveProperty('id');
+      expect(message).toHaveProperty('type');
+      expect(message).toHaveProperty('content');
+    }
+  });
+});
+
+describe('Service Management', () => {
+  it('should get service status', async () => {
+    const { status, data, ok } = await api('/api/service/mayor/status');
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('name', 'mayor');
+    expect(data).toHaveProperty('status');
+  });
+
+  it('should start a service', async () => {
+    const { status, data, ok } = await api('/api/service/witness/up', {
+      method: 'POST',
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data.service).toHaveProperty('status', 'running');
+  });
+
+  it('should stop a service', async () => {
+    const { status, data, ok } = await api('/api/service/witness/down', {
+      method: 'POST',
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data.service).toHaveProperty('status', 'stopped');
+  });
+
+  it('should restart a service', async () => {
+    const { status, data, ok } = await api('/api/service/deacon/restart', {
+      method: 'POST',
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data).toHaveProperty('restarted', true);
+  });
+
+  it('should return 404 for non-existent service', async () => {
+    const { status } = await api('/api/service/fake-service/status');
+
+    expect(status).toBe(404);
+  });
+});
+
 describe('API Error Handling', () => {
 
   it('should return 404 for unknown endpoints', async () => {
