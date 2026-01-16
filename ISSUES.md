@@ -37,14 +37,18 @@
 ---
 
 ### Issue 1.2: WebSocket Tests Missing
-**Status:** 🔴 Not Started
+**Status:** 🟢 COMPLETE (9 tests added)
 **Impact:** HIGH - Real-time features untested
 
-**Tests needed:**
-- [ ] Connection establishment
-- [ ] Reconnection after disconnect
-- [ ] Message handling
-- [ ] Error recovery
+**Tests added:**
+- [x] Connection establishment
+- [x] Multiple concurrent connections
+- [x] Clean disconnect handling
+- [x] Abrupt disconnect handling
+- [x] Ping/pong handling
+- [x] Invalid JSON handling
+- [x] Empty message handling
+- [x] Reconnection after disconnect
 
 **Test file:** `test/integration/websocket.test.js`
 
@@ -124,13 +128,14 @@
 | 2026-01-17 | Setup | Created GAP_ANALYSIS.md | `65d0d35` |
 | 2026-01-17 | CI | Enabled E2E tests in CI | `22a0b89` |
 | 2026-01-17 | 1.1 | Added 20 endpoint tests | `08794ba` |
+| 2026-01-17 | Fix | Fixed integration test (convoy issue tree) | `9beea51` |
+| 2026-01-17 | 1.2 | Added 9 WebSocket tests | `e332003` |
 
 ---
 
 ## Next Steps
 
 1. ~~**Issue 1.1** - Add server endpoint tests~~ ✅ DONE
-2. **Issue 1.2** - Add WebSocket tests
+2. ~~**Issue 1.2** - Add WebSocket tests~~ ✅ DONE
 3. **Issue 1.3** - Add cache tests
-4. Fix pre-existing integration test failure (convoy issue tree)
-5. Continue with Priority 2 and 3...
+4. Continue with Priority 2 and 3...
