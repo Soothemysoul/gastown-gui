@@ -30,9 +30,9 @@ gastown-gui/
 │   ├── shared/         # Shared utilities
 │   └── utils/          # Helper functions
 ├── test/
-│   ├── unit/           # Unit tests
-│   ├── integration/    # Integration tests (endpoints.test.js)
-│   └── e2e.test.js     # End-to-end tests
+│   ├── unit/           # Unit tests (53)
+│   ├── integration/    # Integration tests (129)
+│   └── e2e.test.js     # E2E tests (24)
 └── public/             # Static assets (CSS, icons)
 ```
 
@@ -41,23 +41,42 @@ gastown-gui/
 **API Pattern:** GUI wraps `gt` CLI commands as HTTP endpoints
 - `GET /api/status` → `gt status --json --fast`
 - `POST /api/sling` → `gt sling`
-- See `API.md` for full endpoint mapping
-
-**Polecat Control:** Spawn/stop/restart via rig-list.js
 - `POST /api/polecat/:rig/:name/start` → `gt polecat spawn`
 - `POST /api/polecat/:rig/:name/stop` → tmux kill
-- `POST /api/polecat/:rig/:name/restart` → stop + spawn
 
 **State:** Global state in `js/state.js`, components subscribe to updates
 
+## Feature Status
+
+| Feature | Status |
+|---------|--------|
+| Convoy Management | ✅ Create/list |
+| Sling Work | ✅ Basic |
+| Beads/Issues | ✅ Full CRUD |
+| Mail | ✅ Full |
+| GitHub Integration | ✅ Full |
+| Polecat Control | ✅ spawn/stop/restart |
+| Crew Management | ✅ Create/List/View |
+| Rig Management | ✅ Create/List/Delete |
+| Formula Editor | ✅ Create/List/Use |
+| Agent Config | ❌ List only (90% missing) |
+
+## When to Use GUI vs CLI
+
+**Use GUI for:**
+- Monitor work progress
+- Create/track convoys
+- View agent output
+- Check system health
+- Send mail/nudges
+
+**Use CLI for:**
+- Agent configuration
+- Advanced polecat management
+- Creating formulas
+
 ## Testing
 
-- **206 tests** across unit, integration, and E2E
+- **206 tests** total (unit: 53, integration: 129, e2e: 24)
 - **61 API endpoints** - all tested (100% coverage)
-- Mock server in `test/mock-server.js` for isolated testing
-
-## Docs
-
-- `README.md` - User documentation
-- `API.md` - Endpoint → CLI command mapping
-- `GAP_ANALYSIS.md` - Feature roadmap for contributors
+- CI runs on Node 18, 20, 22
