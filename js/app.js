@@ -165,6 +165,32 @@ async function init() {
     const { mailId, mail } = e.detail;
     showMailDetailModal(mail);
   });
+
+  // Handle polecat start/stop/restart actions
+  document.addEventListener('polecat:action', async (e) => {
+    const { rig, name, action, agentId } = e.detail;
+    try {
+      showToast(`${action === 'start' ? 'Starting' : action === 'stop' ? 'Stopping' : 'Restarting'} polecat...`, 'info');
+
+      if (action === 'start') {
+        await api.startAgent(rig, name);
+        showToast(`Polecat ${name} started`, 'success');
+      } else if (action === 'stop') {
+        await api.stopAgent(rig, name);
+        showToast(`Polecat ${name} stopped`, 'success');
+      } else if (action === 'restart') {
+        await api.restartAgent(rig, name);
+        showToast(`Polecat ${name} restarted`, 'success');
+      }
+
+      // Refresh the agents list
+      document.dispatchEvent(new CustomEvent('status:refresh'));
+    } catch (err) {
+      console.error('Polecat action failed:', err);
+      showToast(`Failed to ${action} polecat: ${err.message}`, 'error');
+    }
+  });
+
 }
 
 // Navigation setup
