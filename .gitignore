@@ -1,1 +1,30 @@
+# Dependencies
 node_modules/
+
+# Environment & secrets
+.env
+.env.*
+.npmrc
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test artifacts
+test/screenshots/*.png
+coverage/
+
+# Build artifacts
+*.tgz
+dist/
