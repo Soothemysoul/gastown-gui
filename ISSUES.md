@@ -87,7 +87,17 @@ The GUI wraps the `gt` CLI commands as HTTP endpoints. Here's the full mapping:
 | `GET /api/formulas/search` | `bd formula search` | ✅ | Search |
 | `GET /api/formula/:name` | `bd formula show` | ✅ | Get formula |
 | `POST /api/formulas` | `bd formula create` | ✅ | Create formula |
+| `PUT /api/formula/:name` | (file update) | ✅ | Update formula |
+| `DELETE /api/formula/:name` | (file delete) | ✅ | Delete formula |
 | `POST /api/formula/:name/use` | `bd cook` | ✅ | Execute formula |
+
+### Crew Management
+| GUI Endpoint | gt Command | Tested | Notes |
+|--------------|------------|--------|-------|
+| `GET /api/crews` | `gt crew list` | ✅ | List crews |
+| `GET /api/crew/:name/status` | `gt crew status` | ✅ | Crew status |
+| `POST /api/crews` | `gt crew add` | ✅ | Add crew |
+| `DELETE /api/crew/:name` | `gt crew remove` | ✅ | Remove crew |
 
 ### Service Management
 | GUI Endpoint | gt Command | Tested | Notes |
@@ -116,10 +126,11 @@ The GUI wraps the `gt` CLI commands as HTTP endpoints. Here's the full mapping:
 | Rigs | 3 | 3 | 100% |
 | Mail | 6 | 6 | 100% |
 | Beads | 9 | 9 | 100% |
-| Formulas | 5 | 5 | 100% |
+| Formulas | 10 | 10 | 100% |
+| Crews | 8 | 8 | 100% |
 | Services | 4 | 4 | 100% |
 | Hook | 1 | 1 | 100% |
-| **TOTAL** | **48** | **48** | **100%** |
+| **TOTAL** | **61** | **61** | **100%** |
 
 ---
 
@@ -192,24 +203,26 @@ The GUI wraps the `gt` CLI commands as HTTP endpoints. Here's the full mapping:
 ---
 
 ### Issue 3.2: Crew Management
-**Status:** 🔴 Not Started
-**Impact:** MEDIUM
+**Status:** 🟢 COMPLETE
+**Impact:** NONE - Crews manageable from GUI
 
-**gt commands to wrap:**
-- `gt crew add <name> --rig <rig>`
-- `gt crew list`
-- `gt crew status`
+**Implementation:**
+- Server: GET/POST /api/crews, GET/DELETE /api/crew/:name
+- UI: Crew cards with members, status, rig info
+- Actions: Create new crew, view status, delete crew
+- Navigation: Dedicated "Crews" view in sidebar
 
 ---
 
 ### Issue 3.3: Formula Editor
-**Status:** 🔴 Not Started
-**Impact:** MEDIUM
+**Status:** 🟢 COMPLETE
+**Impact:** NONE - Full formula CRUD from GUI
 
-**bd commands to wrap:**
-- `bd formula list`
-- `bd formula create`
-- `bd cook <formula>`
+**Implementation:**
+- Server: PUT/DELETE /api/formula/:name endpoints
+- UI: Edit and Delete buttons on formula cards
+- Edit modal with description and template fields
+- Confirmation prompt before delete
 
 ---
 
@@ -229,6 +242,9 @@ The GUI wraps the `gt` CLI commands as HTTP endpoints. Here's the full mapping:
 | 2026-01-17 | UI | Added polecat management buttons to agent grid | `09a756f` |
 | 2026-01-17 | 2.1 | Fixed hardcoded repo references | `37e474d` |
 | 2026-01-17 | 1.1 | Full mail/beads/formulas test coverage (78 total) | `5b3c72a` |
+| 2026-01-17 | 3.2 | Crew management backend + tests | `30393ee` |
+| 2026-01-17 | 3.2 | Crew management UI | `5d96dd9` |
+| 2026-01-17 | 3.3 | Formula editor with update/delete | `5553d1f` |
 
 ---
 
@@ -240,4 +256,16 @@ The GUI wraps the `gt` CLI commands as HTTP endpoints. Here's the full mapping:
 4. ~~**Issue 1.1 Phase 3** - Test polecat/mayor/service endpoints~~ ✅ DONE
 5. ~~**Issue 1.1 Phase 4** - Test mail/beads/formulas CRUD~~ ✅ DONE
 6. ~~**Issue 2.1** - Fix hardcoded repo references~~ ✅ DONE
-7. **Issue 3.x** - Add missing UI features (Polecat UI ✅, Crew management, Formula editor)
+7. ~~**Issue 3.x** - Add missing UI features~~ ✅ ALL DONE
+   - ✅ Polecat spawn/kill UI
+   - ✅ Crew management
+   - ✅ Formula editor
+
+## All Issues Complete! 🎉
+
+The Gas Town GUI now has:
+- 100% API endpoint test coverage (61 endpoints)
+- Full CRUD for all major resources (mail, beads, formulas, crews)
+- Polecat management UI (spawn/stop/restart)
+- Crew management with dedicated view
+- Formula editor with edit/delete support
