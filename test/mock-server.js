@@ -693,6 +693,71 @@ app.post('/api/formula/:name/use', (req, res) => {
   });
 });
 
+// === Crew Management endpoints ===
+const mockCrews = [
+  {
+    name: 'backend-team',
+    rig: 'zoo-game',
+    members: ['polecat-1', 'polecat-2'],
+    status: 'active',
+    created_at: new Date(Date.now() - 604800000).toISOString(),
+  },
+  {
+    name: 'frontend-team',
+    rig: 'gastown',
+    members: ['polecat-3'],
+    status: 'active',
+    created_at: new Date(Date.now() - 172800000).toISOString(),
+  },
+];
+
+app.get('/api/crews', (req, res) => {
+  res.json(mockCrews);
+});
+
+app.get('/api/crew/:name/status', (req, res) => {
+  const { name } = req.params;
+  const crew = mockCrews.find(c => c.name === name);
+  if (!crew) {
+    return res.status(404).json({ error: 'Crew not found' });
+  }
+  res.json({
+    ...crew,
+    active_tasks: Math.floor(Math.random() * 5),
+    completed_tasks: Math.floor(Math.random() * 20) + 5,
+  });
+});
+
+app.post('/api/crews', (req, res) => {
+  const { name, rig } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'Crew name is required' });
+  }
+  const existingCrew = mockCrews.find(c => c.name === name);
+  if (existingCrew) {
+    return res.status(409).json({ error: 'Crew already exists' });
+  }
+  const newCrew = {
+    name,
+    rig: rig || null,
+    members: [],
+    status: 'active',
+    created_at: new Date().toISOString(),
+  };
+  mockCrews.push(newCrew);
+  res.status(201).json({ success: true, crew: newCrew });
+});
+
+app.delete('/api/crew/:name', (req, res) => {
+  const { name } = req.params;
+  const index = mockCrews.findIndex(c => c.name === name);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Crew not found' });
+  }
+  mockCrews.splice(index, 1);
+  res.json({ success: true, removed: name });
+});
+
 // Create HTTP server
 const server = createServer(app);
 

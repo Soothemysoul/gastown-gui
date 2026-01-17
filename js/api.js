@@ -215,6 +215,23 @@ export const api = {
     return this.request(`/api/rigs/${encodeURIComponent(name)}`, { method: 'DELETE' });
   },
 
+  // === Crew Management ===
+  getCrews() {
+    return this.get('/api/crews');
+  },
+
+  getCrewStatus(name) {
+    return this.get(`/api/crew/${encodeURIComponent(name)}/status`);
+  },
+
+  addCrew(name, rig) {
+    return this.post('/api/crews', { name, rig });
+  },
+
+  removeCrew(name) {
+    return this.request(`/api/crew/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  },
+
   runDoctor(options = {}) {
     const params = options.refresh ? '?refresh=true' : '';
     return this.get(`/api/doctor${params}`);

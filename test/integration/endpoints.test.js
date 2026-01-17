@@ -904,3 +904,102 @@ describe('Formulas CRUD', () => {
     expect(status).toBe(400);
   });
 });
+
+// === Crew Management ===
+describe('Crew Management Endpoints', () => {
+  it('should list all crews', async () => {
+    const { status, data, ok } = await api('/api/crews');
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+    expect(data.length).toBeGreaterThanOrEqual(2);
+    expect(data[0]).toHaveProperty('name');
+    expect(data[0]).toHaveProperty('rig');
+    expect(data[0]).toHaveProperty('members');
+    expect(data[0]).toHaveProperty('status');
+  });
+
+  it('should get crew status', async () => {
+    const { status, data, ok } = await api('/api/crew/backend-team/status');
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('name', 'backend-team');
+    expect(data).toHaveProperty('rig');
+    expect(data).toHaveProperty('members');
+    expect(data).toHaveProperty('status');
+  });
+
+  it('should return 404 for non-existent crew status', async () => {
+    const { status } = await api('/api/crew/fake-crew/status');
+
+    expect(status).toBe(404);
+  });
+
+  it('should add a new crew', async () => {
+    const { status, data, ok } = await api('/api/crews', {
+      method: 'POST',
+      body: {
+        name: 'test-crew',
+        rig: 'test-rig',
+      },
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(201);
+    expect(data).toHaveProperty('success', true);
+    expect(data.crew).toHaveProperty('name', 'test-crew');
+  });
+
+  it('should reject crew creation without name', async () => {
+    const { status } = await api('/api/crews', {
+      method: 'POST',
+      body: {
+        rig: 'some-rig',
+      },
+    });
+
+    expect(status).toBe(400);
+  });
+
+  it('should reject duplicate crew creation', async () => {
+    const { status } = await api('/api/crews', {
+      method: 'POST',
+      body: {
+        name: 'backend-team',
+        rig: 'zoo-game',
+      },
+    });
+
+    expect(status).toBe(409);
+  });
+
+  it('should remove a crew', async () => {
+    // First add a crew to remove
+    await api('/api/crews', {
+      method: 'POST',
+      body: {
+        name: 'crew-to-remove',
+        rig: 'test-rig',
+      },
+    });
+
+    const { status, data, ok } = await api('/api/crew/crew-to-remove', {
+      method: 'DELETE',
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data).toHaveProperty('removed', 'crew-to-remove');
+  });
+
+  it('should return 404 when removing non-existent crew', async () => {
+    const { status } = await api('/api/crew/fake-crew', {
+      method: 'DELETE',
+    });
+
+    expect(status).toBe(404);
+  });
+});

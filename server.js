@@ -1626,6 +1626,100 @@ app.delete('/api/rigs/:name', async (req, res) => {
   }
 });
 
+// === Crew Management ===
+
+// List all crews
+app.get('/api/crews', async (req, res) => {
+  // Check cache first
+  if (req.query.refresh !== 'true') {
+    const cached = getCached('crews');
+    if (cached) {
+      return res.json(cached);
+    }
+  }
+
+  const result = await executeGT(['crew', 'list', '--json']);
+
+  if (result.success) {
+    const data = parseJSON(result.data);
+    if (data) {
+      setCache('crews', data, CACHE_TTL.status);
+      return res.json(data);
+    }
+    // Parse non-JSON output
+    const crews = [];
+    const lines = result.data.split('\n').filter(Boolean);
+    for (const line of lines) {
+      const match = line.match(/^(\S+)\s+/);
+      if (match) {
+        crews.push({ name: match[1] });
+      }
+    }
+    setCache('crews', crews, CACHE_TTL.status);
+    res.json(crews);
+  } else {
+    res.status(500).json({ error: result.error });
+  }
+});
+
+// Get crew status
+app.get('/api/crew/:name/status', async (req, res) => {
+  const { name } = req.params;
+
+  const result = await executeGT(['crew', 'status', name, '--json']);
+
+  if (result.success) {
+    const data = parseJSON(result.data);
+    if (data) {
+      return res.json(data);
+    }
+    res.json({ name, raw: result.data });
+  } else {
+    res.status(404).json({ error: result.error || 'Crew not found' });
+  }
+});
+
+// Add a crew member
+app.post('/api/crews', async (req, res) => {
+  const { name, rig } = req.body;
+
+  if (!name) {
+    return res.status(400).json({ error: 'Crew name is required' });
+  }
+
+  const args = ['crew', 'add', name];
+  if (rig) {
+    args.push('--rig', rig);
+  }
+
+  const result = await executeGT(args);
+
+  if (result.success) {
+    broadcast({ type: 'crew_added', data: { name, rig } });
+    res.status(201).json({ success: true, name, rig, raw: result.data });
+  } else {
+    res.status(500).json({ success: false, error: result.error });
+  }
+});
+
+// Remove a crew member
+app.delete('/api/crew/:name', async (req, res) => {
+  const { name } = req.params;
+
+  if (!name) {
+    return res.status(400).json({ error: 'Crew name is required' });
+  }
+
+  const result = await executeGT(['crew', 'remove', name]);
+
+  if (result.success) {
+    broadcast({ type: 'crew_removed', data: { name } });
+    res.json({ success: true, name, raw: result.data });
+  } else {
+    res.status(500).json({ success: false, error: result.error });
+  }
+});
+
 // Run gt doctor
 app.get('/api/doctor', async (req, res) => {
   // Check cache first (skip if ?refresh=true)
