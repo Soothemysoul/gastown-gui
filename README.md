@@ -266,9 +266,10 @@ Contributions welcome!
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test locally (start server with `npm start`, verify in browser)
-5. Run automated tests: `npm test` (206 tests must pass)
-6. Submit a pull request
+4. **Update `CLAUDE.md`** if you add, rename, or delete files
+5. Test locally (start server with `npm start`, verify in browser)
+6. Run automated tests: `npm test` (206 tests must pass)
+7. Submit a pull request
 
 ### Looking for Maintainers
 

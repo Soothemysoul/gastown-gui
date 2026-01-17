@@ -2,6 +2,8 @@
 
 Web GUI for [steveyegge/gastown](https://github.com/steveyegge/gastown) multi-agent orchestrator.
 
+> **KEEP THIS FILE UPDATED!** When adding, renaming, or deleting files, update the Architecture section below.
+
 ## Commands
 
 ```bash
