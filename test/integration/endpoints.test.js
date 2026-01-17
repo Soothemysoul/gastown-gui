@@ -903,6 +903,73 @@ describe('Formulas CRUD', () => {
 
     expect(status).toBe(400);
   });
+
+  it('should update a formula', async () => {
+    const { status, data, ok } = await api('/api/formula/fix-bug', {
+      method: 'PUT',
+      body: {
+        description: 'Updated bug fix workflow',
+        template: 'Updated template: ${issue}',
+      },
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data.formula).toHaveProperty('template', 'Updated template: ${issue}');
+  });
+
+  it('should return 404 when updating non-existent formula', async () => {
+    const { status } = await api('/api/formula/fake-formula', {
+      method: 'PUT',
+      body: {
+        description: 'Test',
+        template: 'Test template',
+      },
+    });
+
+    expect(status).toBe(404);
+  });
+
+  it('should require template when updating formula', async () => {
+    const { status } = await api('/api/formula/fix-bug', {
+      method: 'PUT',
+      body: {
+        description: 'Missing template',
+      },
+    });
+
+    expect(status).toBe(400);
+  });
+
+  it('should delete a formula', async () => {
+    // First create a formula to delete
+    await api('/api/formulas', {
+      method: 'POST',
+      body: {
+        name: 'formula-to-delete',
+        description: 'Temporary formula',
+        template: 'Delete me',
+      },
+    });
+
+    const { status, data, ok } = await api('/api/formula/formula-to-delete', {
+      method: 'DELETE',
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data).toHaveProperty('name', 'formula-to-delete');
+  });
+
+  it('should return 404 when deleting non-existent formula', async () => {
+    const { status } = await api('/api/formula/fake-formula', {
+      method: 'DELETE',
+    });
+
+    expect(status).toBe(404);
+  });
 });
 
 // === Crew Management ===

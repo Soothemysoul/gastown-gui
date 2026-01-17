@@ -2091,6 +2091,76 @@ app.post('/api/formula/:name/use', async (req, res) => {
   }
 });
 
+// Update a formula
+app.put('/api/formula/:name', async (req, res) => {
+  const { name } = req.params;
+  const { description, template } = req.body;
+
+  if (!template) {
+    return res.status(400).json({ error: 'Template is required' });
+  }
+
+  // gt formula update doesn't exist, so we need to write directly to file
+  // Formula files are stored at ~/.beads/formulas/{name}.toml
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+  const formulaPath = path.join(os.homedir(), '.beads', 'formulas', `${name}.toml`);
+
+  try {
+    // Check if formula exists
+    if (!fs.existsSync(formulaPath)) {
+      return res.status(404).json({ error: 'Formula not found' });
+    }
+
+    // Write updated formula
+    const content = `[formula]
+name = "${name}"
+description = "${description || ''}"
+template = """
+${template}
+"""
+`;
+    fs.writeFileSync(formulaPath, content);
+
+    // Invalidate cache
+    invalidateCache('formulas');
+
+    broadcast({ type: 'formula_updated', data: { name } });
+    res.json({ success: true, name, description, template });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Delete a formula
+app.delete('/api/formula/:name', async (req, res) => {
+  const { name } = req.params;
+
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+  const formulaPath = path.join(os.homedir(), '.beads', 'formulas', `${name}.toml`);
+
+  try {
+    // Check if formula exists
+    if (!fs.existsSync(formulaPath)) {
+      return res.status(404).json({ error: 'Formula not found' });
+    }
+
+    // Delete the formula file
+    fs.unlinkSync(formulaPath);
+
+    // Invalidate cache
+    invalidateCache('formulas');
+
+    broadcast({ type: 'formula_deleted', data: { name } });
+    res.json({ success: true, name });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ============= GitHub Integration =============
 
 // Extract GitHub repo from git_url
