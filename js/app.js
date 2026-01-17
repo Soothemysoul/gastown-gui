@@ -397,8 +397,8 @@ async function loadInitialData() {
     preloadBackgroundData();
   } catch (err) {
     console.error('[App] Failed to load initial data:', err);
-    elements.statusMessage.textContent = 'Error loading data';
-    showToast('Failed to load data', 'error');
+    elements.statusMessage.textContent = 'Cannot connect to server';
+    showToast('Cannot connect - is the server running? Check terminal for the correct URL.', 'error', 10000);
   }
 }
 
