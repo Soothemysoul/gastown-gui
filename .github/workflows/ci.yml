@@ -30,6 +30,12 @@ jobs:
       - name: Run unit tests
         run: npm run test:unit
 
+      - name: Run E2E tests
+        run: npm run test:e2e
+        continue-on-error: true  # E2E tests may fail in CI due to browser issues
+        env:
+          CI: true
+
   lint:
     runs-on: ubuntu-latest
 

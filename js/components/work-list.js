@@ -31,14 +31,14 @@ const STATUS_CONFIG = {
 
 // GitHub repo mapping for known rigs
 // Format: { rigName: 'org/repo' } or { beadPrefix: 'org/repo' }
-// NOTE: This can be configured/extended by the user
+// Configure this mapping to link beads/PRs to your GitHub repos
 const GITHUB_REPOS = {
-  // Rig name → GitHub org/repo
-  'hytopia-map-compression': 'web3dev1337/hytopia-map-compression',
-  'testproject': null, // No GitHub URL known
+  // Example: Map rig names to GitHub repos
+  // 'my-project': 'myorg/my-project',
+  // 'another-rig': 'myorg/another-repo',
 
-  // Bead ID prefixes (optional - if beads use different prefixes)
-  // 'hq': 'web3dev1337/hytopia-map-compression',
+  // Example: Map bead ID prefixes to repos
+  // 'proj': 'myorg/project-repo',
 };
 
 /**

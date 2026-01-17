@@ -189,6 +189,18 @@ export const api = {
     return this.post(`/api/formula/${encodeURIComponent(name)}/use`, { target, args });
   },
 
+  updateFormula(name, description, template) {
+    return this.request(`/api/formula/${encodeURIComponent(name)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description, template }),
+    });
+  },
+
+  deleteFormula(name) {
+    return this.request(`/api/formula/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  },
+
   getTargets() {
     return this.get('/api/targets');
   },
@@ -213,6 +225,23 @@ export const api = {
 
   removeRig(name) {
     return this.request(`/api/rigs/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  },
+
+  // === Crew Management ===
+  getCrews() {
+    return this.get('/api/crews');
+  },
+
+  getCrewStatus(name) {
+    return this.get(`/api/crew/${encodeURIComponent(name)}/status`);
+  },
+
+  addCrew(name, rig) {
+    return this.post('/api/crews', { name, rig });
+  },
+
+  removeCrew(name) {
+    return this.request(`/api/crew/${encodeURIComponent(name)}`, { method: 'DELETE' });
   },
 
   runDoctor(options = {}) {

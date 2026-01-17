@@ -133,16 +133,25 @@ function createFormulaCard(formula, index) {
         <span class="material-icons">visibility</span>
         View
       </button>
+      <button class="btn btn-sm btn-secondary" data-action="edit" title="Edit formula">
+        <span class="material-icons">edit</span>
+        Edit
+      </button>
       <button class="btn btn-sm btn-primary" data-action="use" title="Use this formula">
         <span class="material-icons">play_arrow</span>
         Use
+      </button>
+      <button class="btn btn-sm btn-icon btn-danger" data-action="delete" title="Delete formula">
+        <span class="material-icons">delete</span>
       </button>
     </div>
   `;
 
   // Add event listeners
   card.querySelector('[data-action="view"]').addEventListener('click', () => showFormulaDetails(formula));
+  card.querySelector('[data-action="edit"]').addEventListener('click', () => showEditFormulaModal(formula));
   card.querySelector('[data-action="use"]').addEventListener('click', () => showUseFormulaModal(formula));
+  card.querySelector('[data-action="delete"]').addEventListener('click', () => handleDeleteFormula(formula.name));
 
   return card;
 }
@@ -307,6 +316,135 @@ async function handleUseFormula(e) {
   } finally {
     submitBtn.innerHTML = originalText;
     submitBtn.disabled = false;
+  }
+}
+
+/**
+ * Show edit formula modal
+ */
+async function showEditFormulaModal(formula) {
+  // Get full formula details
+  let details;
+  try {
+    details = await api.getFormula(formula.name);
+  } catch (err) {
+    showToast(`Failed to load formula: ${err.message}`, 'error');
+    return;
+  }
+
+  // Create edit modal if it doesn't exist
+  let modal = document.getElementById('edit-formula-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'edit-formula-modal';
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-header">
+        <h2>Edit Formula</h2>
+        <button class="btn btn-icon modal-close" data-modal-close>
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+      <form id="edit-formula-form" class="modal-body">
+        <input type="hidden" id="edit-formula-name" />
+        <div class="form-group">
+          <label for="edit-formula-description">Description</label>
+          <textarea id="edit-formula-description" rows="2" placeholder="What does this formula do?"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="edit-formula-template">Template</label>
+          <textarea id="edit-formula-template" rows="6" required placeholder="The template with \${variables}"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <span class="material-icons">save</span>
+            Save Changes
+          </button>
+        </div>
+      </form>
+    `;
+    document.body.appendChild(modal);
+
+    // Add form submit handler
+    const form = modal.querySelector('#edit-formula-form');
+    form.addEventListener('submit', handleUpdateFormula);
+
+    // Add close handlers
+    modal.querySelectorAll('[data-modal-close]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('modal-overlay').classList.add('hidden');
+        modal.classList.add('hidden');
+      });
+    });
+  }
+
+  // Populate form with current values
+  modal.querySelector('#edit-formula-name').value = details.name;
+  modal.querySelector('#edit-formula-description').value = details.description || '';
+  modal.querySelector('#edit-formula-template').value = details.template || '';
+
+  // Show modal
+  document.getElementById('modal-overlay').classList.remove('hidden');
+  modal.classList.remove('hidden');
+}
+
+/**
+ * Handle formula update form submission
+ */
+async function handleUpdateFormula(e) {
+  e.preventDefault();
+
+  const form = e.target;
+  const name = form.querySelector('#edit-formula-name').value;
+  const description = form.querySelector('#edit-formula-description').value.trim();
+  const template = form.querySelector('#edit-formula-template').value.trim();
+
+  if (!template) {
+    showToast('Template is required', 'error');
+    return;
+  }
+
+  const submitBtn = form.querySelector('[type="submit"]');
+  const originalText = submitBtn.innerHTML;
+  submitBtn.innerHTML = '<span class="material-icons spinning">sync</span> Saving...';
+  submitBtn.disabled = true;
+
+  try {
+    await api.updateFormula(name, description, template);
+    showToast(`Formula "${name}" updated`, 'success');
+
+    // Close modal
+    document.getElementById('modal-overlay').classList.add('hidden');
+    document.getElementById('edit-formula-modal').classList.add('hidden');
+
+    // Reload list
+    await loadFormulas();
+  } catch (err) {
+    showToast(`Failed to update formula: ${err.message}`, 'error');
+  } finally {
+    submitBtn.innerHTML = originalText;
+    submitBtn.disabled = false;
+  }
+}
+
+/**
+ * Handle formula deletion
+ */
+async function handleDeleteFormula(name) {
+  if (!confirm(`Are you sure you want to delete the formula "${name}"? This cannot be undone.`)) {
+    return;
+  }
+
+  try {
+    showToast('Deleting formula...', 'info');
+    await api.deleteFormula(name);
+    showToast(`Formula "${name}" deleted`, 'success');
+
+    // Reload list
+    await loadFormulas();
+  } catch (err) {
+    showToast(`Failed to delete formula: ${err.message}`, 'error');
   }
 }
 

@@ -14,6 +14,7 @@ import { renderActivityFeed } from './components/activity-feed.js';
 import { renderWorkList } from './components/work-list.js';
 import { renderMailList } from './components/mail-list.js';
 import { renderRigList } from './components/rig-list.js';
+import { renderCrewList, loadCrews, showNewCrewModal } from './components/crew-list.js';
 import { initPRList, loadPRs } from './components/pr-list.js';
 import { initFormulaList, loadFormulas } from './components/formula-list.js';
 import { initIssueList, loadIssues } from './components/issue-list.js';
@@ -165,6 +166,32 @@ async function init() {
     const { mailId, mail } = e.detail;
     showMailDetailModal(mail);
   });
+
+  // Handle polecat start/stop/restart actions
+  document.addEventListener('polecat:action', async (e) => {
+    const { rig, name, action, agentId } = e.detail;
+    try {
+      showToast(`${action === 'start' ? 'Starting' : action === 'stop' ? 'Stopping' : 'Restarting'} polecat...`, 'info');
+
+      if (action === 'start') {
+        await api.startAgent(rig, name);
+        showToast(`Polecat ${name} started`, 'success');
+      } else if (action === 'stop') {
+        await api.stopAgent(rig, name);
+        showToast(`Polecat ${name} stopped`, 'success');
+      } else if (action === 'restart') {
+        await api.restartAgent(rig, name);
+        showToast(`Polecat ${name} restarted`, 'success');
+      }
+
+      // Refresh the agents list
+      document.dispatchEvent(new CustomEvent('status:refresh'));
+    } catch (err) {
+      console.error('Polecat action failed:', err);
+      showToast(`Failed to ${action} polecat: ${err.message}`, 'error');
+    }
+  });
+
 }
 
 // Navigation setup
@@ -199,6 +226,8 @@ function switchView(viewId) {
     loadWork();
   } else if (viewId === 'rigs') {
     loadRigs();
+  } else if (viewId === 'crews') {
+    loadCrews();
   } else if (viewId === 'prs') {
     loadPRs();
   } else if (viewId === 'formulas') {
@@ -915,6 +944,21 @@ function setupThemeToggle() {
 document.getElementById('refresh-btn').addEventListener('click', () => {
   loadInitialData();
   showToast('Refreshing...', 'info', 1000);
+});
+
+// Crew management buttons
+document.getElementById('new-crew-btn')?.addEventListener('click', () => {
+  showNewCrewModal();
+});
+
+document.getElementById('crew-refresh')?.addEventListener('click', () => {
+  loadCrews();
+  showToast('Refreshing crews...', 'info', 1000);
+});
+
+// Crew refresh event (triggered by crew-list.js after add/remove)
+document.addEventListener('crew:refresh', () => {
+  loadCrews();
 });
 
 // Mayor command bar

@@ -178,6 +178,78 @@ app.get('/api/agents', (req, res) => {
   res.json(mockData.status.agents);
 });
 
+// Rig management endpoints
+const mockRigs = [
+  { name: 'zoo-game', path: '/home/user/gt/zoo-game', url: 'https://github.com/web3dev1337/zoo-game', status: 'active' },
+  { name: 'gastown', path: '/home/user/gt/gastown', url: 'https://github.com/steveyegge/gastown', status: 'active' },
+];
+
+app.get('/api/rigs', (req, res) => {
+  res.json(mockRigs);
+});
+
+app.post('/api/rigs', (req, res) => {
+  const { name, url } = req.body;
+  if (!name || !url) {
+    return res.status(400).json({ error: 'Missing required fields: name, url' });
+  }
+  const newRig = { name, url, path: `/home/user/gt/${name}`, status: 'active' };
+  mockRigs.push(newRig);
+  res.status(201).json({ success: true, rig: newRig });
+});
+
+app.delete('/api/rigs/:name', (req, res) => {
+  const { name } = req.params;
+  const index = mockRigs.findIndex(r => r.name === name);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Rig not found' });
+  }
+  mockRigs.splice(index, 1);
+  res.json({ success: true, removed: name });
+});
+
+// Doctor/diagnostics endpoints
+app.get('/api/doctor', (req, res) => {
+  res.json({
+    status: 'healthy',
+    checks: [
+      { name: 'git', status: 'ok', message: 'Git 2.43.0 installed' },
+      { name: 'beads', status: 'ok', message: 'beads 0.44.0 installed' },
+      { name: 'tmux', status: 'ok', message: 'tmux 3.4 installed' },
+      { name: 'workspace', status: 'ok', message: 'Workspace configured at ~/gt' },
+    ],
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.post('/api/doctor/fix', (req, res) => {
+  res.json({
+    success: true,
+    fixed: ['tmux session cleanup', 'stale lock removal'],
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get('/api/setup/status', (req, res) => {
+  res.json({
+    installed: true,
+    workspace: '~/gt',
+    rigs: mockRigs.length,
+    agents: mockData.status.agents.length,
+    ready: true,
+  });
+});
+
+app.get('/api/hook', (req, res) => {
+  res.json({
+    status: 'active',
+    hooks: [
+      { name: 'pre-commit', enabled: true },
+      { name: 'post-merge', enabled: true },
+    ],
+  });
+});
+
 app.post('/api/nudge', (req, res) => {
   const { target, message } = req.body;
   res.json({ success: true, target, message });
@@ -266,6 +338,449 @@ app.get('/api/github/repos', (req, res) => {
     { name: 'ai-claude-standards', nameWithOwner: 'web3dev1337/ai-claude-standards', description: 'Claude configuration', url: 'https://github.com/web3dev1337/ai-claude-standards', isPrivate: false, isFork: false, pushedAt: new Date(Date.now() - 259200000).toISOString(), primaryLanguage: { name: 'Markdown' }, stargazerCount: 5 },
   ];
   res.json(repos);
+});
+
+// Polecat (worker) management
+const mockPolecats = new Map([
+  ['zoo-game/polecat-1', { rig: 'zoo-game', name: 'polecat-1', status: 'running', started: new Date().toISOString() }],
+  ['gastown/worker-1', { rig: 'gastown', name: 'worker-1', status: 'idle', started: new Date(Date.now() - 3600000).toISOString() }],
+]);
+
+app.get('/api/polecat/:rig/:name/output', (req, res) => {
+  const { rig, name } = req.params;
+  const key = `${rig}/${name}`;
+  if (!mockPolecats.has(key)) {
+    return res.status(404).json({ error: 'Polecat not found' });
+  }
+  res.json({
+    output: `[${new Date().toISOString()}] Polecat ${name} running in ${rig}\n[INFO] Processing tasks...\n[INFO] Ready for work.`,
+    lines: 3,
+  });
+});
+
+app.get('/api/polecat/:rig/:name/transcript', (req, res) => {
+  const { rig, name } = req.params;
+  const key = `${rig}/${name}`;
+  if (!mockPolecats.has(key)) {
+    return res.status(404).json({ error: 'Polecat not found' });
+  }
+  res.json({
+    transcript: `Session started at ${new Date().toISOString()}\nUser: Start working on task\nAssistant: I'll begin working on that now...`,
+    messages: 2,
+  });
+});
+
+app.post('/api/polecat/:rig/:name/start', (req, res) => {
+  const { rig, name } = req.params;
+  const key = `${rig}/${name}`;
+  const polecat = { rig, name, status: 'running', started: new Date().toISOString() };
+  mockPolecats.set(key, polecat);
+  res.json({ success: true, polecat });
+});
+
+app.post('/api/polecat/:rig/:name/stop', (req, res) => {
+  const { rig, name } = req.params;
+  const key = `${rig}/${name}`;
+  if (!mockPolecats.has(key)) {
+    return res.status(404).json({ error: 'Polecat not found' });
+  }
+  mockPolecats.delete(key);
+  res.json({ success: true, stopped: key });
+});
+
+app.post('/api/polecat/:rig/:name/restart', (req, res) => {
+  const { rig, name } = req.params;
+  const key = `${rig}/${name}`;
+  const polecat = { rig, name, status: 'running', started: new Date().toISOString(), restarted: true };
+  mockPolecats.set(key, polecat);
+  res.json({ success: true, polecat });
+});
+
+// Mayor management
+let mayorMessages = [
+  { id: 1, type: 'user', content: 'Build a new feature', timestamp: new Date(Date.now() - 60000).toISOString() },
+  { id: 2, type: 'assistant', content: 'I will create a convoy for that task.', timestamp: new Date(Date.now() - 30000).toISOString() },
+];
+
+app.get('/api/mayor/output', (req, res) => {
+  res.json({
+    output: `[Mayor] Running since ${new Date(Date.now() - 3600000).toISOString()}\n[Mayor] Active convoys: 2\n[Mayor] Waiting for instructions...`,
+    lines: 3,
+  });
+});
+
+app.get('/api/mayor/messages', (req, res) => {
+  res.json(mayorMessages);
+});
+
+// Service management
+const mockServices = new Map([
+  ['mayor', { name: 'mayor', status: 'running', pid: 12345 }],
+  ['deacon', { name: 'deacon', status: 'running', pid: 12346 }],
+  ['witness', { name: 'witness', status: 'stopped', pid: null }],
+]);
+
+app.get('/api/service/:name/status', (req, res) => {
+  const { name } = req.params;
+  const service = mockServices.get(name);
+  if (!service) {
+    return res.status(404).json({ error: 'Service not found' });
+  }
+  res.json(service);
+});
+
+app.post('/api/service/:name/up', (req, res) => {
+  const { name } = req.params;
+  let service = mockServices.get(name);
+  if (!service) {
+    service = { name, status: 'running', pid: Math.floor(Math.random() * 10000) + 10000 };
+  } else {
+    service.status = 'running';
+    service.pid = Math.floor(Math.random() * 10000) + 10000;
+  }
+  mockServices.set(name, service);
+  res.json({ success: true, service });
+});
+
+app.post('/api/service/:name/down', (req, res) => {
+  const { name } = req.params;
+  const service = mockServices.get(name);
+  if (!service) {
+    return res.status(404).json({ error: 'Service not found' });
+  }
+  service.status = 'stopped';
+  service.pid = null;
+  res.json({ success: true, service });
+});
+
+app.post('/api/service/:name/restart', (req, res) => {
+  const { name } = req.params;
+  let service = mockServices.get(name);
+  if (!service) {
+    service = { name, status: 'running', pid: Math.floor(Math.random() * 10000) + 10000 };
+  } else {
+    service.status = 'running';
+    service.pid = Math.floor(Math.random() * 10000) + 10000;
+  }
+  mockServices.set(name, service);
+  res.json({ success: true, service, restarted: true });
+});
+
+// === Mail endpoints ===
+app.get('/api/mail/all', (req, res) => {
+  res.json(mockData.mail);
+});
+
+app.get('/api/mail/:id', (req, res) => {
+  const { id } = req.params;
+  const mail = mockData.mail.find(m => m.id === id);
+  if (!mail) {
+    return res.status(404).json({ error: 'Mail not found' });
+  }
+  res.json(mail);
+});
+
+app.post('/api/mail/:id/read', (req, res) => {
+  const { id } = req.params;
+  const mail = mockData.mail.find(m => m.id === id);
+  if (!mail) {
+    return res.status(404).json({ error: 'Mail not found' });
+  }
+  mail.read = true;
+  res.json({ success: true, mail });
+});
+
+app.post('/api/mail/:id/unread', (req, res) => {
+  const { id } = req.params;
+  const mail = mockData.mail.find(m => m.id === id);
+  if (!mail) {
+    return res.status(404).json({ error: 'Mail not found' });
+  }
+  mail.read = false;
+  res.json({ success: true, mail });
+});
+
+// === Beads endpoints ===
+const mockBeads = [
+  {
+    id: 'bead-1',
+    title: 'Implement user authentication',
+    description: 'Add login/logout functionality',
+    status: 'open',
+    priority: 2,
+    issue_type: 'feature',
+    created_at: new Date(Date.now() - 86400000).toISOString(),
+    assignee: null,
+    labels: ['auth', 'security'],
+  },
+  {
+    id: 'bead-2',
+    title: 'Fix navbar bug',
+    description: 'Navbar not displaying on mobile',
+    status: 'closed',
+    priority: 1,
+    issue_type: 'bug',
+    created_at: new Date(Date.now() - 172800000).toISOString(),
+    closed_at: new Date(Date.now() - 3600000).toISOString(),
+    close_reason: 'Fixed in commit abc1234, PR #42',
+    assignee: 'polecat-1',
+    labels: ['ui', 'mobile'],
+  },
+];
+
+app.get('/api/beads', (req, res) => {
+  res.json(mockBeads);
+});
+
+app.post('/api/beads', (req, res) => {
+  const { title, description, priority, labels } = req.body;
+  if (!title) {
+    return res.status(400).json({ error: 'Title is required' });
+  }
+  const newBead = {
+    id: `bead-${Date.now()}`,
+    title,
+    description: description || '',
+    status: 'open',
+    priority: priority || 2,
+    issue_type: 'task',
+    created_at: new Date().toISOString(),
+    assignee: null,
+    labels: labels || [],
+  };
+  mockBeads.push(newBead);
+  res.status(201).json({ success: true, bead_id: newBead.id, bead: newBead });
+});
+
+app.get('/api/bead/:beadId', (req, res) => {
+  const { beadId } = req.params;
+  const bead = mockBeads.find(b => b.id === beadId);
+  if (!bead) {
+    return res.status(404).json({ error: 'Bead not found' });
+  }
+  res.json(bead);
+});
+
+app.get('/api/bead/:beadId/links', (req, res) => {
+  const { beadId } = req.params;
+  const bead = mockBeads.find(b => b.id === beadId);
+  if (!bead) {
+    return res.status(404).json({ error: 'Bead not found' });
+  }
+  // Return mock PR links
+  res.json({
+    prs: [
+      {
+        number: 42,
+        title: 'Fix: ' + bead.title,
+        repo: 'myorg/myrepo',
+        url: 'https://github.com/myorg/myrepo/pull/42',
+        state: bead.status === 'closed' ? 'MERGED' : 'OPEN',
+      },
+    ],
+  });
+});
+
+app.post('/api/work/:beadId/done', (req, res) => {
+  const { beadId } = req.params;
+  const { summary } = req.body;
+  const bead = mockBeads.find(b => b.id === beadId);
+  if (!bead) {
+    return res.status(404).json({ error: 'Bead not found' });
+  }
+  bead.status = 'closed';
+  bead.closed_at = new Date().toISOString();
+  bead.close_reason = summary || 'Completed';
+  res.json({ success: true, bead });
+});
+
+app.post('/api/work/:beadId/park', (req, res) => {
+  const { beadId } = req.params;
+  const { reason } = req.body;
+  const bead = mockBeads.find(b => b.id === beadId);
+  if (!bead) {
+    return res.status(404).json({ error: 'Bead not found' });
+  }
+  bead.status = 'parked';
+  bead.park_reason = reason || 'Parked for later';
+  res.json({ success: true, bead });
+});
+
+app.post('/api/work/:beadId/release', (req, res) => {
+  const { beadId } = req.params;
+  const bead = mockBeads.find(b => b.id === beadId);
+  if (!bead) {
+    return res.status(404).json({ error: 'Bead not found' });
+  }
+  bead.assignee = null;
+  bead.status = 'open';
+  res.json({ success: true, bead });
+});
+
+app.post('/api/work/:beadId/reassign', (req, res) => {
+  const { beadId } = req.params;
+  const { target } = req.body;
+  const bead = mockBeads.find(b => b.id === beadId);
+  if (!bead) {
+    return res.status(404).json({ error: 'Bead not found' });
+  }
+  bead.assignee = target;
+  res.json({ success: true, bead });
+});
+
+// === Formulas endpoints ===
+const mockFormulas = [
+  {
+    name: 'fix-bug',
+    description: 'Standard bug fix workflow',
+    template: 'Investigate, fix, and verify the bug: ${issue}',
+    created_at: new Date(Date.now() - 604800000).toISOString(),
+  },
+  {
+    name: 'add-feature',
+    description: 'Feature implementation workflow',
+    template: 'Implement the feature: ${feature}\n\nRequirements:\n${requirements}',
+    created_at: new Date(Date.now() - 1209600000).toISOString(),
+  },
+];
+
+app.get('/api/formulas', (req, res) => {
+  res.json(mockFormulas);
+});
+
+app.get('/api/formula/:name', (req, res) => {
+  const { name } = req.params;
+  const formula = mockFormulas.find(f => f.name === name);
+  if (!formula) {
+    return res.status(404).json({ error: 'Formula not found' });
+  }
+  res.json(formula);
+});
+
+app.post('/api/formulas', (req, res) => {
+  const { name, description, template } = req.body;
+  if (!name || !template) {
+    return res.status(400).json({ error: 'Name and template are required' });
+  }
+  const newFormula = {
+    name,
+    description: description || '',
+    template,
+    created_at: new Date().toISOString(),
+  };
+  mockFormulas.push(newFormula);
+  res.status(201).json({ success: true, formula: newFormula });
+});
+
+app.post('/api/formula/:name/use', (req, res) => {
+  const { name } = req.params;
+  const { target, args } = req.body;
+  // Check formula exists first
+  const formula = mockFormulas.find(f => f.name === name);
+  if (!formula) {
+    return res.status(404).json({ error: 'Formula not found' });
+  }
+  // Then check for required fields
+  if (!target) {
+    return res.status(400).json({ error: 'Target is required' });
+  }
+  res.json({
+    success: true,
+    formula: name,
+    target,
+    args: args || {},
+    message: `Formula "${name}" executed on ${target}`,
+  });
+});
+
+app.put('/api/formula/:name', (req, res) => {
+  const { name } = req.params;
+  const { description, template } = req.body;
+  const formula = mockFormulas.find(f => f.name === name);
+  if (!formula) {
+    return res.status(404).json({ error: 'Formula not found' });
+  }
+  if (!template) {
+    return res.status(400).json({ error: 'Template is required' });
+  }
+  formula.description = description || formula.description;
+  formula.template = template;
+  res.json({ success: true, formula });
+});
+
+app.delete('/api/formula/:name', (req, res) => {
+  const { name } = req.params;
+  const index = mockFormulas.findIndex(f => f.name === name);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Formula not found' });
+  }
+  mockFormulas.splice(index, 1);
+  res.json({ success: true, name });
+});
+
+// === Crew Management endpoints ===
+const mockCrews = [
+  {
+    name: 'backend-team',
+    rig: 'zoo-game',
+    members: ['polecat-1', 'polecat-2'],
+    status: 'active',
+    created_at: new Date(Date.now() - 604800000).toISOString(),
+  },
+  {
+    name: 'frontend-team',
+    rig: 'gastown',
+    members: ['polecat-3'],
+    status: 'active',
+    created_at: new Date(Date.now() - 172800000).toISOString(),
+  },
+];
+
+app.get('/api/crews', (req, res) => {
+  res.json(mockCrews);
+});
+
+app.get('/api/crew/:name/status', (req, res) => {
+  const { name } = req.params;
+  const crew = mockCrews.find(c => c.name === name);
+  if (!crew) {
+    return res.status(404).json({ error: 'Crew not found' });
+  }
+  res.json({
+    ...crew,
+    active_tasks: Math.floor(Math.random() * 5),
+    completed_tasks: Math.floor(Math.random() * 20) + 5,
+  });
+});
+
+app.post('/api/crews', (req, res) => {
+  const { name, rig } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'Crew name is required' });
+  }
+  const existingCrew = mockCrews.find(c => c.name === name);
+  if (existingCrew) {
+    return res.status(409).json({ error: 'Crew already exists' });
+  }
+  const newCrew = {
+    name,
+    rig: rig || null,
+    members: [],
+    status: 'active',
+    created_at: new Date().toISOString(),
+  };
+  mockCrews.push(newCrew);
+  res.status(201).json({ success: true, crew: newCrew });
+});
+
+app.delete('/api/crew/:name', (req, res) => {
+  const { name } = req.params;
+  const index = mockCrews.findIndex(c => c.name === name);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Crew not found' });
+  }
+  mockCrews.splice(index, 1);
+  res.json({ success: true, removed: name });
 });
 
 // Create HTTP server

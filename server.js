@@ -1626,6 +1626,100 @@ app.delete('/api/rigs/:name', async (req, res) => {
   }
 });
 
+// === Crew Management ===
+
+// List all crews
+app.get('/api/crews', async (req, res) => {
+  // Check cache first
+  if (req.query.refresh !== 'true') {
+    const cached = getCached('crews');
+    if (cached) {
+      return res.json(cached);
+    }
+  }
+
+  const result = await executeGT(['crew', 'list', '--json']);
+
+  if (result.success) {
+    const data = parseJSON(result.data);
+    if (data) {
+      setCache('crews', data, CACHE_TTL.status);
+      return res.json(data);
+    }
+    // Parse non-JSON output
+    const crews = [];
+    const lines = result.data.split('\n').filter(Boolean);
+    for (const line of lines) {
+      const match = line.match(/^(\S+)\s+/);
+      if (match) {
+        crews.push({ name: match[1] });
+      }
+    }
+    setCache('crews', crews, CACHE_TTL.status);
+    res.json(crews);
+  } else {
+    res.status(500).json({ error: result.error });
+  }
+});
+
+// Get crew status
+app.get('/api/crew/:name/status', async (req, res) => {
+  const { name } = req.params;
+
+  const result = await executeGT(['crew', 'status', name, '--json']);
+
+  if (result.success) {
+    const data = parseJSON(result.data);
+    if (data) {
+      return res.json(data);
+    }
+    res.json({ name, raw: result.data });
+  } else {
+    res.status(404).json({ error: result.error || 'Crew not found' });
+  }
+});
+
+// Add a crew member
+app.post('/api/crews', async (req, res) => {
+  const { name, rig } = req.body;
+
+  if (!name) {
+    return res.status(400).json({ error: 'Crew name is required' });
+  }
+
+  const args = ['crew', 'add', name];
+  if (rig) {
+    args.push('--rig', rig);
+  }
+
+  const result = await executeGT(args);
+
+  if (result.success) {
+    broadcast({ type: 'crew_added', data: { name, rig } });
+    res.status(201).json({ success: true, name, rig, raw: result.data });
+  } else {
+    res.status(500).json({ success: false, error: result.error });
+  }
+});
+
+// Remove a crew member
+app.delete('/api/crew/:name', async (req, res) => {
+  const { name } = req.params;
+
+  if (!name) {
+    return res.status(400).json({ error: 'Crew name is required' });
+  }
+
+  const result = await executeGT(['crew', 'remove', name]);
+
+  if (result.success) {
+    broadcast({ type: 'crew_removed', data: { name } });
+    res.json({ success: true, name, raw: result.data });
+  } else {
+    res.status(500).json({ success: false, error: result.error });
+  }
+});
+
 // Run gt doctor
 app.get('/api/doctor', async (req, res) => {
   // Check cache first (skip if ?refresh=true)
@@ -1994,6 +2088,76 @@ app.post('/api/formula/:name/use', async (req, res) => {
     res.json({ success: true, name, target, raw: result.data });
   } else {
     res.status(500).json({ success: false, error: result.error });
+  }
+});
+
+// Update a formula
+app.put('/api/formula/:name', async (req, res) => {
+  const { name } = req.params;
+  const { description, template } = req.body;
+
+  if (!template) {
+    return res.status(400).json({ error: 'Template is required' });
+  }
+
+  // gt formula update doesn't exist, so we need to write directly to file
+  // Formula files are stored at ~/.beads/formulas/{name}.toml
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+  const formulaPath = path.join(os.homedir(), '.beads', 'formulas', `${name}.toml`);
+
+  try {
+    // Check if formula exists
+    if (!fs.existsSync(formulaPath)) {
+      return res.status(404).json({ error: 'Formula not found' });
+    }
+
+    // Write updated formula
+    const content = `[formula]
+name = "${name}"
+description = "${description || ''}"
+template = """
+${template}
+"""
+`;
+    fs.writeFileSync(formulaPath, content);
+
+    // Invalidate cache
+    invalidateCache('formulas');
+
+    broadcast({ type: 'formula_updated', data: { name } });
+    res.json({ success: true, name, description, template });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Delete a formula
+app.delete('/api/formula/:name', async (req, res) => {
+  const { name } = req.params;
+
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+  const formulaPath = path.join(os.homedir(), '.beads', 'formulas', `${name}.toml`);
+
+  try {
+    // Check if formula exists
+    if (!fs.existsSync(formulaPath)) {
+      return res.status(404).json({ error: 'Formula not found' });
+    }
+
+    // Delete the formula file
+    fs.unlinkSync(formulaPath);
+
+    // Invalidate cache
+    invalidateCache('formulas');
+
+    broadcast({ type: 'formula_deleted', data: { name } });
+    res.json({ success: true, name });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

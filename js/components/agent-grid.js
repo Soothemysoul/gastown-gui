@@ -29,9 +29,10 @@ export function renderAgentGrid(container, agents) {
 
   // Add event listeners for agent actions
   container.querySelectorAll('.agent-card').forEach(card => {
+    const agentId = card.dataset.agentId;
+
     card.addEventListener('click', (e) => {
       if (!e.target.closest('button')) {
-        const agentId = card.dataset.agentId;
         showAgentDetail(agentId);
       }
     });
@@ -41,8 +42,43 @@ export function renderAgentGrid(container, agents) {
     if (nudgeBtn) {
       nudgeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const agentId = card.dataset.agentId;
         showNudgeModal(agentId);
+      });
+    }
+
+    // Polecat start button
+    const startBtn = card.querySelector('[data-action="start"]');
+    if (startBtn) {
+      startBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handlePolecatAction(agentId, 'start');
+      });
+    }
+
+    // Polecat stop button
+    const stopBtn = card.querySelector('[data-action="stop"]');
+    if (stopBtn) {
+      stopBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handlePolecatAction(agentId, 'stop');
+      });
+    }
+
+    // Polecat restart button
+    const restartBtn = card.querySelector('[data-action="restart"]');
+    if (restartBtn) {
+      restartBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handlePolecatAction(agentId, 'restart');
+      });
+    }
+
+    // Peek/view output button
+    const peekBtn = card.querySelector('[data-action="peek"]');
+    if (peekBtn) {
+      peekBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showAgentOutput(agentId);
       });
     }
   });
@@ -95,18 +131,64 @@ function renderAgentCard(agent, index) {
           ${renderAgentStats(agent)}
         </div>
         <div class="agent-actions">
-          <button class="btn btn-icon btn-sm" title="Nudge Agent" data-action="nudge">
-            <span class="material-icons">notifications_active</span>
-          </button>
-          <button class="btn btn-icon btn-sm" title="View Details" data-action="view">
-            <span class="material-icons">info</span>
-          </button>
+          ${renderAgentActions(agent, role, status)}
         </div>
       </div>
 
       ${status === 'working' ? '<div class="agent-pulse"></div>' : ''}
     </div>
   `;
+}
+
+/**
+ * Render agent action buttons based on role and status
+ */
+function renderAgentActions(agent, role, status) {
+  const actions = [];
+
+  // Common actions
+  actions.push(`
+    <button class="btn btn-icon btn-sm" title="Nudge Agent" data-action="nudge">
+      <span class="material-icons">notifications_active</span>
+    </button>
+  `);
+
+  // Polecat-specific actions
+  if (role === 'polecat') {
+    if (status === 'running' || status === 'working') {
+      actions.push(`
+        <button class="btn btn-icon btn-sm btn-danger" title="Stop Polecat" data-action="stop">
+          <span class="material-icons">stop</span>
+        </button>
+        <button class="btn btn-icon btn-sm" title="Restart Polecat" data-action="restart">
+          <span class="material-icons">refresh</span>
+        </button>
+      `);
+    } else {
+      actions.push(`
+        <button class="btn btn-icon btn-sm btn-success" title="Start Polecat" data-action="start">
+          <span class="material-icons">play_arrow</span>
+        </button>
+      `);
+    }
+  }
+
+  // View output button for agents with output
+  if (role === 'polecat' || role === 'mayor' || role === 'witness') {
+    actions.push(`
+      <button class="btn btn-icon btn-sm" title="View Output" data-action="peek">
+        <span class="material-icons">visibility</span>
+      </button>
+    `);
+  }
+
+  actions.push(`
+    <button class="btn btn-icon btn-sm" title="View Details" data-action="view">
+      <span class="material-icons">info</span>
+    </button>
+  `);
+
+  return actions.join('');
 }
 
 /**
@@ -155,6 +237,37 @@ function showAgentDetail(agentId) {
  */
 function showNudgeModal(agentId) {
   const event = new CustomEvent('agent:nudge', { detail: { agentId } });
+  document.dispatchEvent(event);
+}
+
+/**
+ * Handle polecat start/stop/restart actions
+ * @param {string} agentId - The agent ID (format: rig/name)
+ * @param {string} action - 'start', 'stop', or 'restart'
+ */
+async function handlePolecatAction(agentId, action) {
+  // Parse rig and polecat name from agentId (format: "rig/name" or "rig/Polecat-name")
+  const parts = agentId.split('/');
+  if (parts.length < 2) {
+    console.error('Invalid agent ID format:', agentId);
+    return;
+  }
+
+  const rig = parts[0];
+  const name = parts.slice(1).join('/');
+
+  // Dispatch event for API call (handled by app.js or api.js)
+  const event = new CustomEvent('polecat:action', {
+    detail: { rig, name, action, agentId }
+  });
+  document.dispatchEvent(event);
+}
+
+/**
+ * Show agent output in peek modal
+ */
+function showAgentOutput(agentId) {
+  const event = new CustomEvent('agent:peek', { detail: { agentId } });
   document.dispatchEvent(event);
 }
 
