@@ -466,6 +466,233 @@ app.post('/api/service/:name/restart', (req, res) => {
   res.json({ success: true, service, restarted: true });
 });
 
+// === Mail endpoints ===
+app.get('/api/mail/all', (req, res) => {
+  res.json(mockData.mail);
+});
+
+app.get('/api/mail/:id', (req, res) => {
+  const { id } = req.params;
+  const mail = mockData.mail.find(m => m.id === id);
+  if (!mail) {
+    return res.status(404).json({ error: 'Mail not found' });
+  }
+  res.json(mail);
+});
+
+app.post('/api/mail/:id/read', (req, res) => {
+  const { id } = req.params;
+  const mail = mockData.mail.find(m => m.id === id);
+  if (!mail) {
+    return res.status(404).json({ error: 'Mail not found' });
+  }
+  mail.read = true;
+  res.json({ success: true, mail });
+});
+
+app.post('/api/mail/:id/unread', (req, res) => {
+  const { id } = req.params;
+  const mail = mockData.mail.find(m => m.id === id);
+  if (!mail) {
+    return res.status(404).json({ error: 'Mail not found' });
+  }
+  mail.read = false;
+  res.json({ success: true, mail });
+});
+
+// === Beads endpoints ===
+const mockBeads = [
+  {
+    id: 'bead-1',
+    title: 'Implement user authentication',
+    description: 'Add login/logout functionality',
+    status: 'open',
+    priority: 2,
+    issue_type: 'feature',
+    created_at: new Date(Date.now() - 86400000).toISOString(),
+    assignee: null,
+    labels: ['auth', 'security'],
+  },
+  {
+    id: 'bead-2',
+    title: 'Fix navbar bug',
+    description: 'Navbar not displaying on mobile',
+    status: 'closed',
+    priority: 1,
+    issue_type: 'bug',
+    created_at: new Date(Date.now() - 172800000).toISOString(),
+    closed_at: new Date(Date.now() - 3600000).toISOString(),
+    close_reason: 'Fixed in commit abc1234, PR #42',
+    assignee: 'polecat-1',
+    labels: ['ui', 'mobile'],
+  },
+];
+
+app.get('/api/beads', (req, res) => {
+  res.json(mockBeads);
+});
+
+app.post('/api/beads', (req, res) => {
+  const { title, description, priority, labels } = req.body;
+  if (!title) {
+    return res.status(400).json({ error: 'Title is required' });
+  }
+  const newBead = {
+    id: `bead-${Date.now()}`,
+    title,
+    description: description || '',
+    status: 'open',
+    priority: priority || 2,
+    issue_type: 'task',
+    created_at: new Date().toISOString(),
+    assignee: null,
+    labels: labels || [],
+  };
+  mockBeads.push(newBead);
+  res.status(201).json({ success: true, bead_id: newBead.id, bead: newBead });
+});
+
+app.get('/api/bead/:beadId', (req, res) => {
+  const { beadId } = req.params;
+  const bead = mockBeads.find(b => b.id === beadId);
+  if (!bead) {
+    return res.status(404).json({ error: 'Bead not found' });
+  }
+  res.json(bead);
+});
+
+app.get('/api/bead/:beadId/links', (req, res) => {
+  const { beadId } = req.params;
+  const bead = mockBeads.find(b => b.id === beadId);
+  if (!bead) {
+    return res.status(404).json({ error: 'Bead not found' });
+  }
+  // Return mock PR links
+  res.json({
+    prs: [
+      {
+        number: 42,
+        title: 'Fix: ' + bead.title,
+        repo: 'myorg/myrepo',
+        url: 'https://github.com/myorg/myrepo/pull/42',
+        state: bead.status === 'closed' ? 'MERGED' : 'OPEN',
+      },
+    ],
+  });
+});
+
+app.post('/api/work/:beadId/done', (req, res) => {
+  const { beadId } = req.params;
+  const { summary } = req.body;
+  const bead = mockBeads.find(b => b.id === beadId);
+  if (!bead) {
+    return res.status(404).json({ error: 'Bead not found' });
+  }
+  bead.status = 'closed';
+  bead.closed_at = new Date().toISOString();
+  bead.close_reason = summary || 'Completed';
+  res.json({ success: true, bead });
+});
+
+app.post('/api/work/:beadId/park', (req, res) => {
+  const { beadId } = req.params;
+  const { reason } = req.body;
+  const bead = mockBeads.find(b => b.id === beadId);
+  if (!bead) {
+    return res.status(404).json({ error: 'Bead not found' });
+  }
+  bead.status = 'parked';
+  bead.park_reason = reason || 'Parked for later';
+  res.json({ success: true, bead });
+});
+
+app.post('/api/work/:beadId/release', (req, res) => {
+  const { beadId } = req.params;
+  const bead = mockBeads.find(b => b.id === beadId);
+  if (!bead) {
+    return res.status(404).json({ error: 'Bead not found' });
+  }
+  bead.assignee = null;
+  bead.status = 'open';
+  res.json({ success: true, bead });
+});
+
+app.post('/api/work/:beadId/reassign', (req, res) => {
+  const { beadId } = req.params;
+  const { target } = req.body;
+  const bead = mockBeads.find(b => b.id === beadId);
+  if (!bead) {
+    return res.status(404).json({ error: 'Bead not found' });
+  }
+  bead.assignee = target;
+  res.json({ success: true, bead });
+});
+
+// === Formulas endpoints ===
+const mockFormulas = [
+  {
+    name: 'fix-bug',
+    description: 'Standard bug fix workflow',
+    template: 'Investigate, fix, and verify the bug: ${issue}',
+    created_at: new Date(Date.now() - 604800000).toISOString(),
+  },
+  {
+    name: 'add-feature',
+    description: 'Feature implementation workflow',
+    template: 'Implement the feature: ${feature}\n\nRequirements:\n${requirements}',
+    created_at: new Date(Date.now() - 1209600000).toISOString(),
+  },
+];
+
+app.get('/api/formulas', (req, res) => {
+  res.json(mockFormulas);
+});
+
+app.get('/api/formula/:name', (req, res) => {
+  const { name } = req.params;
+  const formula = mockFormulas.find(f => f.name === name);
+  if (!formula) {
+    return res.status(404).json({ error: 'Formula not found' });
+  }
+  res.json(formula);
+});
+
+app.post('/api/formulas', (req, res) => {
+  const { name, description, template } = req.body;
+  if (!name || !template) {
+    return res.status(400).json({ error: 'Name and template are required' });
+  }
+  const newFormula = {
+    name,
+    description: description || '',
+    template,
+    created_at: new Date().toISOString(),
+  };
+  mockFormulas.push(newFormula);
+  res.status(201).json({ success: true, formula: newFormula });
+});
+
+app.post('/api/formula/:name/use', (req, res) => {
+  const { name } = req.params;
+  const { target, args } = req.body;
+  // Check formula exists first
+  const formula = mockFormulas.find(f => f.name === name);
+  if (!formula) {
+    return res.status(404).json({ error: 'Formula not found' });
+  }
+  // Then check for required fields
+  if (!target) {
+    return res.status(400).json({ error: 'Target is required' });
+  }
+  res.json({
+    success: true,
+    formula: name,
+    target,
+    args: args || {},
+    message: `Formula "${name}" executed on ${target}`,
+  });
+});
+
 // Create HTTP server
 const server = createServer(app);
 

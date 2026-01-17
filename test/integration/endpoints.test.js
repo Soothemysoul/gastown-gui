@@ -13,13 +13,22 @@ const BASE_URL = `http://localhost:${PORT}`;
 // Helper to make API requests
 async function api(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;
-  const response = await fetch(url, {
+  const fetchOptions = {
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
     },
-    ...options,
-  });
+    method: options.method || 'GET',
+  };
+
+  // Stringify body if it's an object
+  if (options.body && typeof options.body === 'object') {
+    fetchOptions.body = JSON.stringify(options.body);
+  } else if (options.body) {
+    fetchOptions.body = options.body;
+  }
+
+  const response = await fetch(url, fetchOptions);
 
   const contentType = response.headers.get('content-type');
   let data = null;
@@ -624,4 +633,274 @@ describe('API Error Handling', () => {
     expect([400, 500]).toContain(response.status);
   });
 
+});
+
+// === Mail CRUD Tests ===
+describe('Mail CRUD', () => {
+  it('should get all mail', async () => {
+    const { status, data, ok } = await api('/api/mail/all');
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+  });
+
+  it('should get mail by id', async () => {
+    const { status, data, ok } = await api('/api/mail/mail-1');
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('id', 'mail-1');
+    expect(data).toHaveProperty('subject');
+    expect(data).toHaveProperty('message');
+  });
+
+  it('should return 404 for non-existent mail', async () => {
+    const { status } = await api('/api/mail/non-existent-mail');
+
+    expect(status).toBe(404);
+  });
+
+  it('should mark mail as read', async () => {
+    const { status, data, ok } = await api('/api/mail/mail-2/read', {
+      method: 'POST',
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data.mail).toHaveProperty('read', true);
+  });
+
+  it('should mark mail as unread', async () => {
+    const { status, data, ok } = await api('/api/mail/mail-1/unread', {
+      method: 'POST',
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data.mail).toHaveProperty('read', false);
+  });
+
+  it('should return 404 when marking non-existent mail as read', async () => {
+    const { status } = await api('/api/mail/fake-mail/read', {
+      method: 'POST',
+    });
+
+    expect(status).toBe(404);
+  });
+});
+
+// === Beads CRUD Tests ===
+describe('Beads CRUD', () => {
+  it('should get bead by id', async () => {
+    const { status, data, ok } = await api('/api/bead/bead-1');
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('id', 'bead-1');
+    expect(data).toHaveProperty('title');
+    expect(data).toHaveProperty('status');
+  });
+
+  it('should return 404 for non-existent bead', async () => {
+    const { status } = await api('/api/bead/non-existent-bead');
+
+    expect(status).toBe(404);
+  });
+
+  it('should get bead links', async () => {
+    const { status, data, ok } = await api('/api/bead/bead-1/links');
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('prs');
+    expect(Array.isArray(data.prs)).toBe(true);
+  });
+
+  it('should create a new bead', async () => {
+    const { status, data, ok } = await api('/api/beads', {
+      method: 'POST',
+      body: {
+        title: 'Test Bead',
+        description: 'A test bead for testing',
+        priority: 1,
+        labels: ['test'],
+      },
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(201);
+    expect(data).toHaveProperty('success', true);
+    expect(data).toHaveProperty('bead_id');
+    expect(data.bead).toHaveProperty('title', 'Test Bead');
+  });
+
+  it('should reject bead creation without title', async () => {
+    const { status } = await api('/api/beads', {
+      method: 'POST',
+      body: {
+        description: 'No title provided',
+      },
+    });
+
+    expect(status).toBe(400);
+  });
+
+  it('should mark bead as done', async () => {
+    const { status, data, ok } = await api('/api/work/bead-1/done', {
+      method: 'POST',
+      body: { summary: 'Task completed successfully' },
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data.bead).toHaveProperty('status', 'closed');
+    expect(data.bead).toHaveProperty('close_reason');
+  });
+
+  it('should park a bead', async () => {
+    // First reset the bead to open status
+    await api('/api/work/bead-2/release', { method: 'POST' });
+
+    const { status, data, ok } = await api('/api/work/bead-2/park', {
+      method: 'POST',
+      body: { reason: 'Waiting for dependencies' },
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data.bead).toHaveProperty('status', 'parked');
+  });
+
+  it('should release a bead', async () => {
+    const { status, data, ok } = await api('/api/work/bead-2/release', {
+      method: 'POST',
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data.bead.assignee).toBeNull();
+  });
+
+  it('should reassign a bead', async () => {
+    const { status, data, ok } = await api('/api/work/bead-1/reassign', {
+      method: 'POST',
+      body: { target: 'polecat-2' },
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data.bead).toHaveProperty('assignee', 'polecat-2');
+  });
+
+  it('should return 404 when operating on non-existent bead', async () => {
+    const { status } = await api('/api/work/fake-bead/done', {
+      method: 'POST',
+      body: { summary: 'test' },
+    });
+
+    expect(status).toBe(404);
+  });
+});
+
+// === Formulas CRUD Tests ===
+describe('Formulas CRUD', () => {
+  it('should list all formulas', async () => {
+    const { status, data, ok } = await api('/api/formulas');
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+    expect(data.length).toBeGreaterThan(0);
+  });
+
+  it('should include formula details', async () => {
+    const { data } = await api('/api/formulas');
+
+    expect(data[0]).toHaveProperty('name');
+    expect(data[0]).toHaveProperty('description');
+    expect(data[0]).toHaveProperty('template');
+  });
+
+  it('should get formula by name', async () => {
+    const { status, data, ok } = await api('/api/formula/fix-bug');
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('name', 'fix-bug');
+    expect(data).toHaveProperty('template');
+  });
+
+  it('should return 404 for non-existent formula', async () => {
+    const { status } = await api('/api/formula/non-existent-formula');
+
+    expect(status).toBe(404);
+  });
+
+  it('should create a new formula', async () => {
+    const { status, data, ok } = await api('/api/formulas', {
+      method: 'POST',
+      body: {
+        name: 'test-formula',
+        description: 'A test formula',
+        template: 'Do the thing: ${task}',
+      },
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(201);
+    expect(data).toHaveProperty('success', true);
+    expect(data.formula).toHaveProperty('name', 'test-formula');
+  });
+
+  it('should reject formula creation without name or template', async () => {
+    const { status } = await api('/api/formulas', {
+      method: 'POST',
+      body: {
+        description: 'Missing required fields',
+      },
+    });
+
+    expect(status).toBe(400);
+  });
+
+  it('should use/execute a formula', async () => {
+    const { status, data, ok } = await api('/api/formula/fix-bug/use', {
+      method: 'POST',
+      body: {
+        target: 'polecat-1',
+        args: { issue: 'AUTH-123' },
+      },
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data).toHaveProperty('formula', 'fix-bug');
+    expect(data).toHaveProperty('target', 'polecat-1');
+  });
+
+  it('should return 404 when using non-existent formula', async () => {
+    const { status } = await api('/api/formula/fake-formula/use', {
+      method: 'POST',
+      body: { target: 'polecat-1' },
+    });
+
+    expect(status).toBe(404);
+  });
+
+  it('should require target when using formula', async () => {
+    const { status } = await api('/api/formula/fix-bug/use', {
+      method: 'POST',
+      body: {},
+    });
+
+    expect(status).toBe(400);
+  });
 });
