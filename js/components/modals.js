@@ -22,9 +22,9 @@ let peekAutoRefreshInterval = null;
 let currentPeekAgentId = null;
 
 // GitHub repo mapping for known rigs (same as work-list.js)
+// Configure this mapping to link beads/PRs to your GitHub repos
 const GITHUB_REPOS = {
-  'hytopia-map-compression': 'web3dev1337/hytopia-map-compression',
-  'testproject': null,
+  // Example: 'my-project': 'myorg/my-project',
 };
 
 function getGitHubRepoForBead(beadId) {
