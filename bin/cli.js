@@ -44,7 +44,7 @@ if (args.includes('--version') || args.includes('-v')) {
 
 const command = args.find(a => !a.startsWith('-')) || 'start';
 const options = {
-  port: getOption(['--port', '-p']) || process.env.PORT || '7667',
+  port: getOption(['--port', '-p']) || process.env.GASTOWN_PORT || '7667',
   host: getOption(['--host', '-h']) || process.env.HOST || '127.0.0.1',
   open: hasFlag(['--open', '-o']),
   dev: hasFlag(['--dev']),
@@ -78,19 +78,19 @@ Commands:
   help          Show this help message
 
 Options:
-  --port, -p <port>   Port to run on (default: 7667, or PORT env var)
+  --port, -p <port>   Port to run on (default: 7667, or GASTOWN_PORT env var)
   --host, -h <host>   Host to bind to (default: 127.0.0.1, or HOST env var)
   --open, -o          Open browser after starting
   --dev               Enable development mode
 
 Environment Variables:
-  PORT         Server port (default: 7667)
+  GASTOWN_PORT Server port (default: 7667)
   HOST         Server host (default: 127.0.0.1)
   GT_ROOT      Gas Town root directory (default: ~/gt)
 
 Examples:
   gastown-gui                    # Start on default port
-  gastown-gui start --port 4000  # Start on port 4000
+  gastown-gui start --port 9234  # Start on custom port
   gastown-gui start --open       # Start and open browser
   gastown-gui doctor             # Check gt installation
 
@@ -208,7 +208,7 @@ function startServer() {
 
   const env = {
     ...process.env,
-    PORT: options.port,
+    GASTOWN_PORT: options.port,
     HOST: options.host,
   };
 
