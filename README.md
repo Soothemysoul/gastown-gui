@@ -228,18 +228,24 @@ npm run test:watch
 
 ## Known Limitations
 
-**Not Yet Implemented:**
-- Polecat management (spawn, kill, view logs)
-- Convoy management
-- Formula editor/creator
-- Agent configuration
-- Crew management
-- Rig removal/deletion
-- Work item editing
+### Remaining Features (Use CLI)
+
+| Feature | Status |
+|---------|--------|
+| Polecat spawn/kill/logs | ❌ CLI only |
+| Agent configuration UI | ❌ Not implemented |
+| Rig deletion | ❌ Not implemented |
+
+### Recently Implemented
+
+| Feature | Status |
+|---------|--------|
+| Crew management | ✅ Create/list/view |
+| Formula operations | ✅ Create/list/use |
+| Test coverage | ✅ 206 tests passing |
 
 **Known Issues:**
 - GT CLI sling may fail with "mol bond requires direct database access" (upstream issue)
-- Some edge cases untested
 
 ---
 
