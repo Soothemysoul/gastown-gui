@@ -30,6 +30,10 @@ const TUTORIAL_START_DELAY_MS = 1000;
 const WS_RECONNECT_DELAY_MS = 5000;
 const BACKGROUND_PRELOAD_DELAY_MS = 500;
 const CONNECTION_ERROR_TOAST_DURATION_MS = 10000;
+const REFRESH_TOAST_DURATION_MS = 1000;
+const MAYOR_OUTPUT_POLL_INTERVAL_MS = 2000;
+const MAYOR_OUTPUT_TAIL_LINES = 80;
+const MAYOR_MESSAGE_PREVIEW_LENGTH = 40;
 
 // DOM Elements
 const elements = {
@@ -802,7 +806,7 @@ function setupKeyboardShortcuts() {
         case 'r':
           e.preventDefault();
           loadInitialData();
-          showToast('Refreshing...', 'info', 1000);
+          showToast('Refreshing...', 'info', REFRESH_TOAST_DURATION_MS);
           break;
         case 's':
           e.preventDefault();
@@ -953,7 +957,7 @@ function setupThemeToggle() {
 // Refresh button
 document.getElementById('refresh-btn').addEventListener('click', () => {
   loadInitialData();
-  showToast('Refreshing...', 'info', 1000);
+  showToast('Refreshing...', 'info', REFRESH_TOAST_DURATION_MS);
 });
 
 // Crew management buttons
@@ -963,7 +967,7 @@ document.getElementById('new-crew-btn')?.addEventListener('click', () => {
 
 document.getElementById('crew-refresh')?.addEventListener('click', () => {
   loadCrews();
-  showToast('Refreshing crews...', 'info', 1000);
+  showToast('Refreshing crews...', 'info', REFRESH_TOAST_DURATION_MS);
 });
 
 // Crew refresh event (triggered by crew-list.js after add/remove)
@@ -985,7 +989,7 @@ async function sendToMayor() {
   try {
     const result = await api.nudge('mayor', message);
     if (result.success) {
-      const truncatedMsg = message.substring(0, 40) + (message.length > 40 ? '...' : '');
+      const truncatedMsg = message.substring(0, MAYOR_MESSAGE_PREVIEW_LENGTH) + (message.length > MAYOR_MESSAGE_PREVIEW_LENGTH ? '...' : '');
       if (result.wasAutoStarted) {
         showToast('Mayor auto-started. Sent: ' + truncatedMsg, 'success');
       } else {
@@ -1053,7 +1057,7 @@ let mayorOutputRefreshInterval = null;
 
 async function refreshMayorOutput() {
   try {
-    const data = await api.getMayorOutput(80);
+    const data = await api.getMayorOutput(MAYOR_OUTPUT_TAIL_LINES);
     if (data.output) {
       // Format output with some highlighting
       let output = data.output;
@@ -1077,7 +1081,7 @@ function showMayorOutput() {
   mayorOutputPanel.style.display = 'block';
   refreshMayorOutput();
   // Auto-refresh every 2 seconds while open
-  mayorOutputRefreshInterval = setInterval(refreshMayorOutput, 2000);
+  mayorOutputRefreshInterval = setInterval(refreshMayorOutput, MAYOR_OUTPUT_POLL_INTERVAL_MS);
 }
 
 function hideMayorOutput() {
