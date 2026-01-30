@@ -32,10 +32,12 @@ gastown-gui/
 │   │   └── EventBus.js
 │   ├── routes/
 │   │   ├── formulas.js
+│   │   ├── convoys.js
 │   │   ├── github.js
 │   │   ├── status.js
 │   │   └── targets.js
 │   ├── services/
+│   │   ├── ConvoyService.js
 │   │   ├── FormulaService.js
 │   │   ├── GitHubService.js
 │   │   ├── StatusService.js
@@ -108,9 +110,11 @@ gastown-gui/
 │   │   ├── statusService.test.js  # StatusService tests
 │   │   ├── targetService.test.js  # TargetService tests
 │   │   ├── githubService.test.js  # GitHubService tests
+│   │   ├── convoyService.test.js  # ConvoyService tests
 │   │   ├── statusRoutes.test.js   # Status endpoint tests (real Express app)
 │   │   ├── targetRoutes.test.js   # Target endpoint tests (real Express app)
 │   │   ├── githubRoutes.test.js   # GitHub endpoint tests (real Express app)
+│   │   ├── convoyRoutes.test.js   # Convoy endpoint tests (real Express app)
 │   │   ├── formulaRoutes.test.js  # Formula endpoint tests (real Express app)
 │   │   └── quoteArg.test.js   # Shell injection security tests
 │   └── integration/

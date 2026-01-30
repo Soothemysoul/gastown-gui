@@ -27,10 +27,12 @@ import { BDGateway } from './server/gateways/BDGateway.js';
 import { GTGateway } from './server/gateways/GTGateway.js';
 import { GitHubGateway } from './server/gateways/GitHubGateway.js';
 import { TmuxGateway } from './server/gateways/TmuxGateway.js';
+import { ConvoyService } from './server/services/ConvoyService.js';
 import { FormulaService } from './server/services/FormulaService.js';
 import { GitHubService } from './server/services/GitHubService.js';
 import { StatusService } from './server/services/StatusService.js';
 import { TargetService } from './server/services/TargetService.js';
+import { registerConvoyRoutes } from './server/routes/convoys.js';
 import { registerFormulaRoutes } from './server/routes/formulas.js';
 import { registerGitHubRoutes } from './server/routes/github.js';
 import { registerStatusRoutes } from './server/routes/status.js';
@@ -50,6 +52,11 @@ const gtGateway = new GTGateway({ runner: commandRunner, gtRoot: GT_ROOT });
 const bdGateway = new BDGateway({ runner: commandRunner, gtRoot: GT_ROOT });
 const tmuxGateway = new TmuxGateway({ runner: commandRunner });
 const backendCache = new CacheRegistry();
+const convoyService = new ConvoyService({
+  gtGateway,
+  cache: backendCache,
+  emit: (type, data) => broadcast({ type, data }),
+});
 const statusService = new StatusService({ gtGateway, tmuxGateway, cache: backendCache, gtRoot: GT_ROOT });
 const targetService = new TargetService({ statusService });
 const gitHubGateway = new GitHubGateway({ runner: commandRunner });
@@ -431,57 +438,7 @@ async function loadMailFeedEvents(feedPath) {
 registerStatusRoutes(app, { statusService });
 
 // List convoys
-app.get('/api/convoys', async (req, res) => {
-  const cacheKey = `convoys_${req.query.all || 'false'}_${req.query.status || 'all'}`;
-
-  // Check cache
-  if (req.query.refresh !== 'true') {
-    const cached = getCached(cacheKey);
-    if (cached) return res.json(cached);
-  }
-
-  const args = ['convoy', 'list', '--json'];
-  if (req.query.all === 'true') args.push('--all');
-  if (req.query.status) args.push(`--status=${req.query.status}`);
-
-  const result = await executeGT(args);
-  if (result.success) {
-    const data = parseJSON(result.data) || [];
-    setCache(cacheKey, data, CACHE_TTL.convoys);
-    res.json(data);
-  } else {
-    res.status(500).json({ error: result.error });
-  }
-});
-
-// Get convoy details
-app.get('/api/convoy/:id', async (req, res) => {
-  const result = await executeGT(['convoy', 'status', req.params.id, '--json']);
-  if (result.success) {
-    const data = parseJSON(result.data);
-    res.json(data || { id: req.params.id, raw: result.data });
-  } else {
-    res.status(500).json({ error: result.error });
-  }
-});
-
-// Create convoy
-app.post('/api/convoy', async (req, res) => {
-  const { name, issues, notify } = req.body;
-  const args = ['convoy', 'create', name, ...(issues || [])];
-  if (notify) args.push('--notify', notify);
-
-  const result = await executeGT(args);
-  if (result.success) {
-    // Parse convoy ID from text output (e.g., "Created convoy: convoy-abc123")
-    const match = result.data.match(/(?:Created|created)\s*(?:convoy)?:?\s*(\S+)/i);
-    const convoyId = match ? match[1] : result.data.trim();
-    broadcast({ type: 'convoy_created', data: { convoy_id: convoyId, name } });
-    res.json({ success: true, convoy_id: convoyId, raw: result.data });
-  } else {
-    res.status(500).json({ error: result.error });
-  }
-});
+registerConvoyRoutes(app, { convoyService });
 
 // Sling work
 app.post('/api/sling', async (req, res) => {
