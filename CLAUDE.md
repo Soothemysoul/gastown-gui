@@ -83,7 +83,8 @@ gastown-gui/
 │   │   ├── agent-types.js     # Agent type definitions & colors
 │   │   ├── beads.js           # Bead domain helpers/constants
 │   │   ├── events.js          # Custom event bus
-│   │   └── github-repos.js    # Bead/rig → GitHub repo mapping helpers
+│   │   ├── github-repos.js    # Bead/rig → GitHub repo mapping helpers
+│   │   └── timing.js          # Shared timing constants
 │   └── utils/
 │       ├── formatting.js      # Date/number formatters
 │       ├── html.js            # HTML escape/template helpers
