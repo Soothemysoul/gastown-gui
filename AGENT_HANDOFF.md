@@ -13,6 +13,7 @@
 2. `refactoring-analysis/05-RANKINGS.md` - Priority order
 3. `refactoring-analysis/07-PROCESS-AND-KNOWLEDGE.md` - How we got here
 4. `refactoring-analysis/08-IMPLEMENTATION-PLAN.md` - Step-by-step implementation plan (tests + migration)
+5. `refactoring-analysis/09-IMPLEMENTATION-REPORT.md` - What’s implemented so far (for reviewers)
 
 ---
 
