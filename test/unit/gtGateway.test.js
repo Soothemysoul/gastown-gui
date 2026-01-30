@@ -42,6 +42,15 @@ describe('GTGateway', () => {
     expect(result.data).toEqual({ rigs: [] });
   });
 
+  it('status() forwards allowExitCodes to runner', async () => {
+    const runner = new FakeRunner();
+    runner.queue({ ok: true, exitCode: 1, stdout: '{"rigs":[]}', stderr: '', error: null, signal: null });
+    const gateway = new GTGateway({ runner, gtRoot: '/tmp/gt' });
+
+    await gateway.status({ allowExitCodes: [0, 1] });
+    expect(runner.calls[0].options.allowExitCodes).toEqual([0, 1]);
+  });
+
   it('listConvoys() supports all + status options', async () => {
     const runner = new FakeRunner();
     runner.queue({ ok: true, exitCode: 0, stdout: '[]', stderr: '', error: null, signal: null });
@@ -78,4 +87,3 @@ describe('GTGateway', () => {
     expect(result.raw).toBe('okwarn');
   });
 });
-

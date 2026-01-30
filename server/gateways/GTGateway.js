@@ -18,10 +18,10 @@ export class GTGateway {
     return this._runner.exec('gt', args, { cwd: this._gtRoot, ...options });
   }
 
-  async status({ fast = true } = {}) {
+  async status({ fast = true, allowExitCodes } = {}) {
     const args = ['status', '--json'];
     if (fast) args.push('--fast');
-    const result = await this.exec(args, { timeoutMs: 30000 });
+    const result = await this.exec(args, { timeoutMs: 30000, allowExitCodes });
     const raw = (result.stdout || '').trim();
     return { ...result, raw, data: parseJsonOrNull(raw) };
   }
@@ -66,4 +66,3 @@ export class GTGateway {
     return { ...result, raw };
   }
 }
-
