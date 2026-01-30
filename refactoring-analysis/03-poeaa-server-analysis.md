@@ -13,6 +13,32 @@ The server.js is a **monolithic Express server** bridging browser UI to CLI tool
 
 ---
 
+## Correctness & Test Gaps (Fresh Audit Findings)
+
+These issues are **high severity** because they can break production behavior while CI stays green.
+
+1. **The current test suite does not execute `server.js`.**
+   - `vitest` spins up `test/mock-server.js` via `test/globalSetup.js` and all HTTP/E2E tests talk to that mock server.
+   - Result: `server.js` can regress (or be partially broken) without any test failures.
+
+2. **`executeGT()` has an unreachable “non-zero but useful output” success path.**
+   - The code intends to treat commands like `gt doctor` as “successful” when they return non-zero exit codes but still produce meaningful output.
+   - Today `looksLikeError` includes `|| error.code !== 0`, which makes it **always true in the catch block**, so the “treat as success” branch can never run.
+
+3. **Formula update/delete endpoints are currently broken at runtime.**
+   - `PUT /api/formula/:name` and `DELETE /api/formula/:name` use `require(...)` inside an ESM file and call an undefined `invalidateCache()`.
+   - These endpoints will 500 when hit, but tests won’t catch it because they don’t run the real server.
+
+4. **Direct external tool calls still bypass the existing helpers.**
+   - Some areas call `execFileAsync('gh' | 'git' | 'tmux', ...)` directly instead of going through a single normalization layer, making behavior inconsistent and hard to stub.
+
+These findings increase the ROI of the proposed **Gateway + Service Layer** refactor because we can:
+- centralize process execution and exit-code semantics in one place,
+- remove known runtime breakages (formulas) while building the new architecture,
+- and add meaningful backend tests that don’t require `gt/bd/gh/tmux` to be installed.
+
+---
+
 ## HIGH IMPACT PoEAA Patterns Applicable
 
 ### 1. Gateway Pattern (Martin Fowler p.466)

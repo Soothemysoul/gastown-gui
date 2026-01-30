@@ -12,6 +12,7 @@
 1. `refactoring-analysis/00-SUMMARY-IMPRESSIVE-REFACTORINGS.md` - **THE MAIN DOCUMENT**
 2. `refactoring-analysis/05-RANKINGS.md` - Priority order
 3. `refactoring-analysis/07-PROCESS-AND-KNOWLEDGE.md` - How we got here
+4. `refactoring-analysis/08-IMPLEMENTATION-PLAN.md` - Step-by-step implementation plan (tests + migration)
 
 ---
 
@@ -34,7 +35,8 @@ refactoring-analysis/
 ├── 04-utilities-analysis.md
 ├── 05-RANKINGS.md
 ├── 06-remaining-components.md
-└── 07-PROCESS-AND-KNOWLEDGE.md
+├── 07-PROCESS-AND-KNOWLEDGE.md
+└── 08-IMPLEMENTATION-PLAN.md
 ```
 
 ### Memory Files
