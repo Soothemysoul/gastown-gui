@@ -22,10 +22,16 @@ import { fileURLToPath } from 'url';
 import { createApp } from './server/app/createApp.js';
 import { AgentPath } from './server/domain/values/AgentPath.js';
 import { CommandRunner } from './server/infrastructure/CommandRunner.js';
+import { CacheRegistry } from './server/infrastructure/CacheRegistry.js';
 import { BDGateway } from './server/gateways/BDGateway.js';
 import { GTGateway } from './server/gateways/GTGateway.js';
+import { TmuxGateway } from './server/gateways/TmuxGateway.js';
 import { FormulaService } from './server/services/FormulaService.js';
+import { StatusService } from './server/services/StatusService.js';
+import { TargetService } from './server/services/TargetService.js';
 import { registerFormulaRoutes } from './server/routes/formulas.js';
+import { registerStatusRoutes } from './server/routes/status.js';
+import { registerTargetRoutes } from './server/routes/targets.js';
 
 const execFileAsync = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
@@ -39,6 +45,10 @@ const GT_ROOT = process.env.GT_ROOT || path.join(HOME, 'gt');
 const commandRunner = new CommandRunner();
 const gtGateway = new GTGateway({ runner: commandRunner, gtRoot: GT_ROOT });
 const bdGateway = new BDGateway({ runner: commandRunner, gtRoot: GT_ROOT });
+const tmuxGateway = new TmuxGateway({ runner: commandRunner });
+const backendCache = new CacheRegistry();
+const statusService = new StatusService({ gtGateway, tmuxGateway, cache: backendCache, gtRoot: GT_ROOT });
+const targetService = new TargetService({ statusService });
 
 const defaultOrigins = [
   `http://localhost:${PORT}`,
@@ -127,28 +137,6 @@ setInterval(() => {
     console.log(`[Cache] Cleaned ${cleaned} expired entries, ${cache.size} remaining`);
   }
 }, CACHE_CLEANUP_INTERVAL);
-
-// Pending requests map - prevents duplicate concurrent requests for same data
-const pendingRequests = new Map();
-
-// Get or create a pending request - deduplicates concurrent calls
-function getPendingOrExecute(key, executor) {
-  // Return cached data if available
-  const cached = getCached(key);
-  if (cached) return Promise.resolve(cached);
-
-  // Return existing pending request if one is in flight
-  if (pendingRequests.has(key)) {
-    return pendingRequests.get(key);
-  }
-
-  // Execute and store promise
-  const promise = executor().finally(() => {
-    pendingRequests.delete(key);
-  });
-  pendingRequests.set(key, promise);
-  return promise;
-}
 
 // Middleware
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
@@ -435,53 +423,7 @@ async function loadMailFeedEvents(feedPath) {
 // ============= REST API Endpoints =============
 
 // Town status overview
-app.get('/api/status', async (req, res) => {
-  // Check cache first (skip if ?refresh=true)
-  if (req.query.refresh !== 'true') {
-    const cached = getCached('status');
-    if (cached) {
-      return res.json(cached);
-    }
-  }
-
-  const [result, runningPolecats] = await Promise.all([
-    executeGT(['status', '--json', '--fast']),
-    getRunningPolecats()
-  ]);
-
-  if (result.success) {
-    const data = parseJSON(result.data);
-    if (data) {
-      // Enhance rigs with running state from tmux and git_url from config
-      for (const rig of data.rigs || []) {
-        // Get git_url from cached rig config
-        const rigConfig = await getRigConfig(rig.name);
-        if (rigConfig) {
-          rig.git_url = rigConfig.git_url || null;
-        }
-
-        for (const hook of rig.hooks || []) {
-          // Check if this polecat has a running tmux session
-          const agentPath = hook.agent; // e.g., "hytopia-map-compression/capable"
-          hook.running = runningPolecats.has(agentPath);
-
-          // Also check polecats subdirectory format
-          const polecatPath = agentPath.replace(/\//, '/polecats/');
-          if (!hook.running && runningPolecats.has(polecatPath)) {
-            hook.running = true;
-          }
-        }
-      }
-      data.runningPolecats = Array.from(runningPolecats);
-
-      // Cache the result
-      setCache('status', data, CACHE_TTL.status);
-    }
-    res.json(data || { raw: result.data });
-  } else {
-    res.status(500).json({ error: result.error });
-  }
-});
+registerStatusRoutes(app, { statusService });
 
 // List convoys
 app.get('/api/convoys', async (req, res) => {
@@ -610,82 +552,7 @@ app.post('/api/sling', async (req, res) => {
 });
 
 // Get available sling targets
-app.get('/api/targets', async (req, res) => {
-  try {
-    // Get status which includes rigs and agents
-    const statusResult = await getPendingOrExecute('status', async () => {
-      const result = await executeGT(['status', '--json', '--fast']);
-      if (result.success) {
-        const data = parseJSON(result.data) || {};
-        setCache('status', data, CACHE_TTL.status);
-        return data;
-      }
-      return null;
-    });
-
-    const status = statusResult || {};
-    const rigs = status.rigs || [];
-    const targets = [];
-
-    // Global agents
-    targets.push({
-      id: 'mayor',
-      name: 'Mayor',
-      type: 'global',
-      icon: 'account_balance',
-      description: 'Global coordinator - dispatches work across all projects'
-    });
-    targets.push({
-      id: 'deacon',
-      name: 'Deacon',
-      type: 'global',
-      icon: 'health_and_safety',
-      description: 'Health monitor - can dispatch to dogs'
-    });
-    targets.push({
-      id: 'deacon/dogs',
-      name: 'Deacon Dogs',
-      type: 'global',
-      icon: 'pets',
-      description: 'Auto-dispatch to an idle dog worker'
-    });
-
-    // Rigs (can spawn polecats)
-    rigs.forEach(rig => {
-      targets.push({
-        id: rig.name,
-        name: rig.name,
-        type: 'rig',
-        icon: 'folder_special',
-        description: `Auto-spawn polecat in ${rig.name}`
-      });
-
-      // Existing agents in rig
-      if (rig.agents) {
-        rig.agents.forEach(agent => {
-          if (agent.running) {
-            targets.push({
-              id: `${rig.name}/${agent.name}`,
-              name: `${rig.name}/${agent.name}`,
-              type: 'agent',
-              role: agent.role,
-              icon: agent.role === 'witness' ? 'visibility' :
-                    agent.role === 'refinery' ? 'merge_type' : 'engineering',
-              description: `${agent.role} in ${rig.name}`,
-              running: agent.running,
-              has_work: agent.has_work
-            });
-          }
-        });
-      }
-    });
-
-    res.json(targets);
-  } catch (err) {
-    console.error('[API] Error getting targets:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
+registerTargetRoutes(app, { targetService });
 
 // Escalate issue to human overseer
 app.post('/api/escalate', async (req, res) => {
@@ -2288,22 +2155,17 @@ wss.on('connection', (ws) => {
     startActivityStream();
   }
 
-  // Send initial status - uses deduplication to prevent duplicate concurrent requests
-  getPendingOrExecute('status', async () => {
-    const result = await executeGT(['status', '--json', '--fast']);
-    if (result.success) {
-      const data = parseJSON(result.data);
-      if (data) setCache('status', data, CACHE_TTL.status);
-      return data;
-    }
-    return null;
-  }).then(data => {
-    if (data && ws.readyState === 1) { // OPEN
-      ws.send(JSON.stringify({ type: 'status', data }));
-    }
-  }).catch(err => {
-    console.error('[WS] Error getting initial status:', err.message);
-  });
+  // Send initial status
+  statusService
+    .getStatus({ refresh: false })
+    .then((data) => {
+      if (data && ws.readyState === 1) { // OPEN
+        ws.send(JSON.stringify({ type: 'status', data }));
+      }
+    })
+    .catch((err) => {
+      console.error('[WS] Error getting initial status:', err.message);
+    });
 
   ws.on('close', () => {
     console.log('[WS] Client disconnected');

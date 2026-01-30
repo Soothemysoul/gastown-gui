@@ -31,9 +31,13 @@ gastown-gui/
 │   │   ├── CommandRunner.js
 │   │   └── EventBus.js
 │   ├── routes/
-│   │   └── formulas.js
+│   │   ├── formulas.js
+│   │   ├── status.js
+│   │   └── targets.js
 │   ├── services/
-│   │   └── FormulaService.js
+│   │   ├── FormulaService.js
+│   │   ├── StatusService.js
+│   │   └── TargetService.js
 │   └── gateways/
 │       ├── BDGateway.js
 │       ├── GitHubGateway.js
@@ -99,6 +103,10 @@ gastown-gui/
 │   │   ├── gitGateway.test.js     # GitGateway tests
 │   │   ├── safeSegment.test.js    # SafeSegment tests
 │   │   ├── agentPath.test.js      # AgentPath tests
+│   │   ├── statusService.test.js  # StatusService tests
+│   │   ├── targetService.test.js  # TargetService tests
+│   │   ├── statusRoutes.test.js   # Status endpoint tests (real Express app)
+│   │   ├── targetRoutes.test.js   # Target endpoint tests (real Express app)
 │   │   ├── formulaRoutes.test.js  # Formula endpoint tests (real Express app)
 │   │   └── quoteArg.test.js   # Shell injection security tests
 │   └── integration/
