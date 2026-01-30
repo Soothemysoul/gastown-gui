@@ -8,7 +8,7 @@ import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { initAutocomplete, renderBeadItem, renderAgentItem } from './autocomplete.js';
 import { state } from '../state.js';
-import { escapeHtml, escapeAttr } from '../utils/html.js';
+import { escapeHtml, escapeAttr, capitalize } from '../utils/html.js';
 import { debounce } from '../utils/performance.js';
 
 // Modal registry
@@ -769,10 +769,6 @@ async function populateRecipientDropdown(modalElement, preselect = null) {
   } catch (err) {
     console.error('[Modals] Failed to populate recipients:', err);
   }
-}
-
-function capitalize(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 // === Help Modal ===
