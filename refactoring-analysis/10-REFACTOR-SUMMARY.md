@@ -39,7 +39,7 @@ This repo’s backend is fundamentally a **GUI → CLI bridge**: it receives HTT
 
 ```mermaid
 flowchart LR
-  Browser[Browser UI] -->|HTTP + WebSocket| Monolith[server.js (monolith)]
+  Browser[Browser UI] -->|HTTP + WebSocket| Monolith[server.js - monolith]
   Monolith -->|exec/spawn| GT[gt CLI]
   Monolith -->|exec/spawn| BD[bd CLI]
   Monolith -->|exec/spawn| GH[gh CLI]
@@ -62,14 +62,14 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  Browser[Browser UI] -->|HTTP| Routes[server/routes (thin adapters)]
-  Browser -->|WebSocket| WS[server.js (broadcast)]
+  Browser[Browser UI] -->|HTTP| Routes[server/routes - thin adapters]
+  Browser -->|WebSocket| WS[server.js - broadcast]
 
-  subgraph Core[Backend Application Core (server/)]
-    Routes --> Services[server/services (Service Layer)]
-    Services --> VOs[server/domain/values (Value Objects)]
+  subgraph Core[Backend Application Core - server/]
+    Routes --> Services[server/services - Service Layer]
+    Services --> VOs[server/domain/values - Value Objects]
     Services --> CacheReg[CacheRegistry]
-    Services --> Gateways[server/gateways (Gateway)]
+    Services --> Gateways[server/gateways - Gateway]
     Gateways --> Runner[CommandRunner]
   end
 
