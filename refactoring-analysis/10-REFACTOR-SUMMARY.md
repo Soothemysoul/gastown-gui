@@ -3,9 +3,9 @@
 ## Snapshot
 
 - **Branch:** `refactor`
-- **Diff range:** `a4ebe276816c373fc99457fa58756aa23966096e` → `d06fb14cdcea0ea598a1aa3b5ee79ca7db9c6d2a`
+- **Diff range:** `a4ebe276816c373fc99457fa58756aa23966096e` → `HEAD`
 - **Base:** `a4ebe27` (2026-01-17) — `chore: bump version to 0.9.2 for npm publish`
-- **Head:** `d06fb14` (2026-01-30) — `docs(refactor): add before/after summary report`
+- **Head:** current `refactor` tip (changes as new commits land)
 - **Tests:** `npm test` ✅ (Vitest) — 30 files / 281 tests passed (local run 2026-01-30)
 
 ## Why This Refactor Exists
@@ -140,7 +140,7 @@ Test inventory (current branch):
 ## Change Stats (Base → Head)
 
 - Files changed: **72** (added 68, modified 4, deleted 0)
-- Lines: **+6740 / -1010** (net **+5730**)
+- Lines: **+6741 / -1010** (net **+5731**)
 - Tests only: **+1523 / -2** (net **+1521**)
 
 ### Backend / Server Refactor Files
@@ -222,7 +222,7 @@ Test inventory (current branch):
 | A | `refactoring-analysis/07-PROCESS-AND-KNOWLEDGE.md` | 175 | 0 | +175 |
 | A | `refactoring-analysis/08-IMPLEMENTATION-PLAN.md` | 186 | 0 | +186 |
 | A | `refactoring-analysis/09-IMPLEMENTATION-REPORT.md` | 82 | 0 | +82 |
-| A | `refactoring-analysis/10-REFACTOR-SUMMARY.md` | 248 | 0 | +248 |
+| A | `refactoring-analysis/10-REFACTOR-SUMMARY.md` | 249 | 0 | +249 |
 | A | `refactoring-analysis/trace/README.md` | 23 | 0 | +23 |
 | A | `refactoring-analysis/trace/REPORT.md` | 31 | 0 | +31 |
 | A | `refactoring-analysis/trace/user-prompts.sanitized.jsonl` | 450 | 0 | +450 |
