@@ -21,6 +21,11 @@ import { fileURLToPath } from 'url';
 
 import { createApp } from './server/app/createApp.js';
 import { AgentPath } from './server/domain/values/AgentPath.js';
+import { CommandRunner } from './server/infrastructure/CommandRunner.js';
+import { BDGateway } from './server/gateways/BDGateway.js';
+import { GTGateway } from './server/gateways/GTGateway.js';
+import { FormulaService } from './server/services/FormulaService.js';
+import { registerFormulaRoutes } from './server/routes/formulas.js';
 
 const execFileAsync = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
@@ -30,6 +35,10 @@ const PORT = process.env.GASTOWN_PORT || 7667;
 const HOST = process.env.HOST || '127.0.0.1';
 const HOME = process.env.HOME || os.homedir();
 const GT_ROOT = process.env.GT_ROOT || path.join(HOME, 'gt');
+
+const commandRunner = new CommandRunner();
+const gtGateway = new GTGateway({ runner: commandRunner, gtRoot: GT_ROOT });
+const bdGateway = new BDGateway({ runner: commandRunner, gtRoot: GT_ROOT });
 
 const defaultOrigins = [
   `http://localhost:${PORT}`,
@@ -1944,209 +1953,20 @@ app.get('/api/service/:name/status', async (req, res) => {
 
 // ============= Formula Management =============
 
-// List all formulas
-app.get('/api/formulas', async (req, res) => {
-  // Check cache
-  if (req.query.refresh !== 'true') {
-    const cached = getCached('formulas');
-    if (cached) return res.json(cached);
-  }
+const formulaCache = {
+  get: (key) => getCached(key),
+  set: (key, value, ttlMs) => setCache(key, value, ttlMs),
+  delete: (key) => cache.delete(key),
+};
 
-  // Try gt formula list first
-  let result = await executeGT(['formula', 'list', '--json']);
-
-  if (result.success) {
-    const formulas = parseJSON(result.data);
-    if (formulas) {
-      setCache('formulas', formulas, CACHE_TTL.formulas);
-      return res.json(formulas);
-    }
-  }
-
-  // Try without --json flag
-  result = await executeGT(['formula', 'list']);
-  if (result.success && result.data) {
-    // Parse text output: "  formula-name - description"
-    const lines = result.data.split('\n');
-    const formulas = [];
-    for (const line of lines) {
-      const match = line.match(/^\s+(\S+)\s*(?:-\s*(.+))?$/);
-      if (match) {
-        formulas.push({ name: match[1], description: match[2] || '' });
-      }
-    }
-    if (formulas.length > 0) {
-      setCache('formulas', formulas, CACHE_TTL.formulas);
-      return res.json(formulas);
-    }
-  }
-
-  // Fallback: try bd formula list
-  try {
-    const { stdout } = await execFileAsync('bd', ['formula', 'list', '--json'], {
-      cwd: GT_ROOT,
-      timeout: 10000
-    });
-    const formulas = JSON.parse(String(stdout || '') || '[]');
-    setCache('formulas', formulas, CACHE_TTL.formulas);
-    return res.json(formulas);
-  } catch {
-    // Final fallback - empty array
-    return res.json([]);
-  }
+const formulaService = new FormulaService({
+  gtGateway,
+  bdGateway,
+  cache: formulaCache,
+  emit: (type, data) => broadcast({ type, data }),
 });
 
-// Search formulas
-app.get('/api/formulas/search', async (req, res) => {
-  const query = req.query.q || '';
-
-  try {
-    // Get all formulas and filter
-    const result = await executeGT(['formula', 'list', '--json']);
-    const formulas = parseJSON(result.data) || [];
-
-    const filtered = formulas.filter(f => {
-      const name = (f.name || '').toLowerCase();
-      const desc = (f.description || '').toLowerCase();
-      const q = query.toLowerCase();
-      return name.includes(q) || desc.includes(q);
-    });
-
-    res.json(filtered);
-  } catch {
-    res.json([]);
-  }
-});
-
-// Get formula details
-app.get('/api/formula/:name', async (req, res) => {
-  const { name } = req.params;
-  const result = await executeGT(['formula', 'show', name, '--json']);
-
-  if (result.success) {
-    const formula = parseJSON(result.data) || {};
-    res.json(formula);
-  } else {
-    res.status(404).json({ error: 'Formula not found' });
-  }
-});
-
-// Create a new formula
-app.post('/api/formulas', async (req, res) => {
-  const { name, description, template } = req.body;
-
-  if (!name) {
-    return res.status(400).json({ error: 'Name is required' });
-  }
-
-  const args = ['formula', 'create', name];
-  if (description) {
-    args.push('--description', description);
-  }
-  if (template) {
-    args.push('--template', template);
-  }
-
-  const result = await executeGT(args);
-
-  if (result.success) {
-    broadcast({ type: 'formula_created', data: { name } });
-    res.json({ success: true, name, raw: result.data });
-  } else {
-    res.status(500).json({ success: false, error: result.error });
-  }
-});
-
-// Use a formula (create work from formula)
-app.post('/api/formula/:name/use', async (req, res) => {
-  const { name } = req.params;
-  const { target, args: formulaArgs } = req.body;
-
-  const cmdArgs = ['formula', 'use', name];
-  if (target) {
-    cmdArgs.push('--target', target);
-  }
-  if (formulaArgs) {
-    cmdArgs.push('--args', formulaArgs);
-  }
-
-  const result = await executeGT(cmdArgs, { timeout: 30000 });
-
-  if (result.success) {
-    broadcast({ type: 'formula_used', data: { name, target } });
-    res.json({ success: true, name, target, raw: result.data });
-  } else {
-    res.status(500).json({ success: false, error: result.error });
-  }
-});
-
-// Update a formula
-app.put('/api/formula/:name', async (req, res) => {
-  const { name } = req.params;
-  const { description, template } = req.body;
-
-  if (!template) {
-    return res.status(400).json({ error: 'Template is required' });
-  }
-
-  // gt formula update doesn't exist, so we need to write directly to file
-  // Formula files are stored at ~/.beads/formulas/{name}.toml
-  const formulaPath = path.join(os.homedir(), '.beads', 'formulas', `${name}.toml`);
-
-  try {
-    // Check if formula exists
-    try {
-      await fsPromises.access(formulaPath);
-    } catch {
-      return res.status(404).json({ error: 'Formula not found' });
-    }
-
-    // Write updated formula
-    const content = `[formula]
-name = "${name}"
-description = "${description || ''}"
-template = """
-${template}
-"""
-`;
-    await fsPromises.writeFile(formulaPath, content, 'utf8');
-
-    // Invalidate cache
-    cache.delete('formulas');
-
-    broadcast({ type: 'formula_updated', data: { name } });
-    res.json({ success: true, name, description, template });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Delete a formula
-app.delete('/api/formula/:name', async (req, res) => {
-  const { name } = req.params;
-
-  const formulaPath = path.join(os.homedir(), '.beads', 'formulas', `${name}.toml`);
-
-  try {
-    // Check if formula exists
-    try {
-      await fsPromises.access(formulaPath);
-    } catch {
-      return res.status(404).json({ error: 'Formula not found' });
-    }
-
-    // Delete the formula file
-    await fsPromises.unlink(formulaPath);
-
-    // Invalidate cache
-    cache.delete('formulas');
-
-    broadcast({ type: 'formula_deleted', data: { name } });
-    res.json({ success: true, name });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
+registerFormulaRoutes(app, { formulaService });
 
 // ============= GitHub Integration =============
 
