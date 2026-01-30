@@ -8,6 +8,7 @@
 import { escapeHtml, escapeAttr, truncate } from '../utils/html.js';
 import { formatTimeAgoOrDate } from '../utils/formatting.js';
 import { TIMING_MS } from '../shared/timing.js';
+import { getStaggerClass } from '../shared/animations.js';
 
 // Status icons for convoys
 const STATUS_ICONS = {
@@ -219,7 +220,7 @@ function renderConvoyCard(convoy, index) {
   const isExpanded = expandedConvoys.has(convoy.id);
 
   return `
-    <div class="convoy-card animate-spawn stagger-${Math.min(index, 6)} ${isExpanded ? 'expanded' : ''}"
+    <div class="convoy-card animate-spawn ${getStaggerClass(index)} ${isExpanded ? 'expanded' : ''}"
          data-convoy-id="${escapeAttr(convoy.id)}"
          data-status="${escapeAttr(status)}"
          data-issues='${escapeAttr(JSON.stringify(convoy.issues || []))}'

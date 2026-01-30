@@ -7,6 +7,7 @@
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { escapeHtml } from '../utils/html.js';
+import { getStaggerClass } from '../shared/animations.js';
 
 let container = null;
 let formulas = [];
@@ -110,7 +111,7 @@ function renderFormulas() {
  */
 function createFormulaCard(formula, index) {
   const card = document.createElement('div');
-  card.className = `formula-card animate-spawn stagger-${Math.min(index, 6)}`;
+  card.className = `formula-card animate-spawn ${getStaggerClass(index)}`;
   card.dataset.formulaName = formula.name;
 
   const description = formula.description || 'No description';

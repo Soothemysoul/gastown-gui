@@ -7,6 +7,7 @@
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { escapeHtml } from '../utils/html.js';
+import { getStaggerClass } from '../shared/animations.js';
 
 let currentCrews = [];
 
@@ -73,7 +74,7 @@ function renderCrewCard(crew, index) {
   const statusIcon = crew.status === 'active' ? 'check_circle' : 'pause_circle';
 
   return `
-    <div class="crew-card animate-spawn stagger-${Math.min(index, 6)}" data-crew-name="${escapeHtml(crew.name)}">
+    <div class="crew-card animate-spawn ${getStaggerClass(index)}" data-crew-name="${escapeHtml(crew.name)}">
       <div class="crew-header">
         <div class="crew-icon">
           <span class="material-icons">groups</span>

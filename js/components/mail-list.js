@@ -10,6 +10,7 @@ import { showToast } from './toast.js';
 import { escapeHtml, truncate } from '../utils/html.js';
 import { TIME_MS } from '../utils/formatting.js';
 import { debounce } from '../utils/performance.js';
+import { getStaggerClass } from '../shared/animations.js';
 
 // Priority icons and colors
 const PRIORITY_CONFIG = {
@@ -317,7 +318,7 @@ function renderMailItem(mail, index) {
        </span>`;
 
   return `
-    <div class="mail-item ${isUnread ? 'unread' : ''} ${isFeedMail ? 'feed-mail' : ''} animate-spawn stagger-${Math.min(index, 6)}"
+    <div class="mail-item ${isUnread ? 'unread' : ''} ${isFeedMail ? 'feed-mail' : ''} animate-spawn ${getStaggerClass(index)}"
          data-mail-id="${mail.id}"
          style="--from-color: ${fromConfig.color}">
       <div class="mail-status">

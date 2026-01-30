@@ -8,6 +8,7 @@ import { AGENT_TYPES, STATUS_ICONS, STATUS_COLORS, getAgentConfig } from '../sha
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { escapeHtml } from '../utils/html.js';
+import { getStaggerClass } from '../shared/animations.js';
 
 /**
  * Render the rig list
@@ -105,7 +106,7 @@ function renderRigCard(rig, index) {
   const githubUrl = rig.git_url || null;
 
   return `
-    <div class="rig-card animate-spawn stagger-${Math.min(index, 6)}" data-rig-name="${rig.name}">
+    <div class="rig-card animate-spawn ${getStaggerClass(index)}" data-rig-name="${rig.name}">
       <div class="rig-header">
         <div class="rig-icon">
           <span class="material-icons">folder_special</span>

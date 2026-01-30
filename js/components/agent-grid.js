@@ -6,6 +6,7 @@
 
 import { AGENT_TYPES, STATUS_ICONS, STATUS_COLORS, getAgentConfig, formatAgentName } from '../shared/agent-types.js';
 import { escapeHtml, truncate } from '../utils/html.js';
+import { getStaggerClass } from '../shared/animations.js';
 
 /**
  * Render the agent grid
@@ -96,9 +97,9 @@ function renderAgentCard(agent, index) {
   const statusColor = STATUS_COLORS[status] || STATUS_COLORS.idle;
 
   return `
-    <div class="agent-card animate-spawn stagger-${Math.min(index, 6)}"
-         data-agent-id="${agent.id || agent.address}"
-         style="--agent-color: ${agentConfig.color}">
+	    <div class="agent-card animate-spawn ${getStaggerClass(index)}"
+	         data-agent-id="${agent.id || agent.address}"
+	         style="--agent-color: ${agentConfig.color}">
       <div class="agent-header">
         <div class="agent-avatar" style="background-color: ${agentConfig.color}20; border-color: ${agentConfig.color}">
           <span class="material-icons" style="color: ${agentConfig.color}">${agentConfig.icon}</span>

@@ -81,6 +81,7 @@ gastown-gui/
 │   │   └── work-list.js       # Work items display
 │   ├── shared/
 │   │   ├── agent-types.js     # Agent type definitions & colors
+│   │   ├── animations.js      # Shared animation helpers
 │   │   ├── beads.js           # Bead domain helpers/constants
 │   │   ├── events.js          # Custom event bus
 │   │   ├── github-repos.js    # Bead/rig → GitHub repo mapping helpers

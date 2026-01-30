@@ -8,6 +8,7 @@ import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { formatRelativeTime } from '../utils/formatting.js';
 import { escapeHtml } from '../utils/html.js';
+import { getStaggerClass } from '../shared/animations.js';
 
 let container = null;
 let issues = [];
@@ -99,7 +100,7 @@ function renderIssues() {
  */
 function createIssueCard(issue, index) {
   const card = document.createElement('div');
-  card.className = `issue-card issue-${issue.state} animate-spawn stagger-${Math.min(index, 6)}`;
+  card.className = `issue-card issue-${issue.state} animate-spawn ${getStaggerClass(index)}`;
   card.dataset.issueNumber = issue.number;
   card.dataset.repo = issue.repo;
 

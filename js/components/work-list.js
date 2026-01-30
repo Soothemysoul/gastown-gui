@@ -11,6 +11,7 @@ import { formatTimeAgoOrDate } from '../utils/formatting.js';
 import { getBeadPriority } from '../shared/beads.js';
 import { getGitHubRepoForBead } from '../shared/github-repos.js';
 import { TIMING_MS } from '../shared/timing.js';
+import { getStaggerClass } from '../shared/animations.js';
 
 // Issue type icons
 const TYPE_ICONS = {
@@ -226,8 +227,8 @@ function renderBeadCard(bead, index) {
   const priority = getBeadPriority(bead);
 
   return `
-    <div class="bead-card ${statusConfig.class} animate-spawn stagger-${Math.min(index, 6)}"
-         data-bead-id="${bead.id}">
+	    <div class="bead-card ${statusConfig.class} animate-spawn ${getStaggerClass(index)}"
+	         data-bead-id="${bead.id}">
       <div class="bead-header">
         <div class="bead-status">
           <span class="material-icons">${statusConfig.icon}</span>
