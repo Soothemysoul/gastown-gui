@@ -9,7 +9,7 @@ Web GUI for [steveyegge/gastown](https://github.com/steveyegge/gastown) multi-ag
 ```bash
 npm start          # Start server (port 4000)
 npm run dev        # Dev mode with auto-reload
-npm test           # Run all tests (227 tests)
+npm test           # Run all tests (231 tests)
 npm run test:unit  # Unit tests only
 npm run test:e2e   # E2E tests only
 ```
@@ -21,12 +21,13 @@ gastown-gui/
 ├── server.js              # Express server + 61 API endpoints wrapping gt CLI
 ├── server/                # Backend modules (in progress)
 │   ├── infrastructure/
-│       ├── CacheRegistry.js
-│       ├── CommandRunner.js
-│       └── EventBus.js
+│   │   ├── CacheRegistry.js
+│   │   ├── CommandRunner.js
+│   │   └── EventBus.js
 │   └── gateways/
 │       ├── BDGateway.js
-│       └── GTGateway.js
+│       ├── GTGateway.js
+│       └── TmuxGateway.js
 ├── index.html             # Main HTML entry point
 ├── package.json           # Dependencies & npm scripts
 ├── bin/
@@ -75,13 +76,14 @@ gastown-gui/
 │   ├── e2e.test.js        # Puppeteer browser tests (24)
 │   ├── integration.test.js # Legacy integration tests
 │   ├── unit/
-│   │   ├── state.test.js      # State management tests (53)
+│   │   ├── state.test.js      # State management tests (29)
 │   │   ├── cacheRegistry.test.js # CacheRegistry tests (4)
 │   │   ├── commandRunner.test.js  # CommandRunner tests (5)
 │   │   ├── eventBus.test.js       # EventBus tests (3)
 │   │   ├── gtGateway.test.js      # GTGateway tests (5)
 │   │   ├── bdGateway.test.js      # BDGateway tests (4)
-│   │   └── quoteArg.test.js   # Shell injection security tests (22)
+│   │   ├── tmuxGateway.test.js    # TmuxGateway tests (4)
+│   │   └── quoteArg.test.js   # Shell injection security tests (24)
 │   └── integration/
 │       ├── endpoints.test.js  # API endpoint tests (78)
 │       ├── websocket.test.js  # WebSocket lifecycle tests (9)
@@ -131,6 +133,6 @@ gastown-gui/
 
 ## Testing
 
-- **227 tests** total (unit: 74, integration: 129, e2e: 24)
+- **231 tests** total (unit: 78, integration: 129, e2e: 24)
 - **61 API endpoints** - contract tested via `test/mock-server.js` (real server route coverage in progress)
 - CI runs on Node 18, 20, 22
