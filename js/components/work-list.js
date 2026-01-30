@@ -298,32 +298,5 @@ function showBeadDetail(beadId, bead) {
  * Show a small toast when copying
  */
 function showCopyToast(message) {
-  // Try to use the existing toast system
-  const event = new CustomEvent('toast:show', { detail: { message, type: 'success', duration: TIMING_MS.FEEDBACK } });
-  document.dispatchEvent(event);
-
-  // Fallback: create a simple toast if no handler
-  setTimeout(() => {
-    const existingToast = document.querySelector('.copy-toast');
-    if (existingToast) existingToast.remove();
-
-    const toast = document.createElement('div');
-    toast.className = 'copy-toast';
-    toast.textContent = message;
-    toast.style.cssText = `
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--bg-elevated, #333);
-      color: var(--text-primary, #fff);
-      padding: 8px 16px;
-      border-radius: 4px;
-      font-size: 13px;
-      z-index: 9999;
-      animation: fadeInUp 0.2s ease;
-    `;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), TIMING_MS.FEEDBACK);
-  }, 0);
+  showToast(message, 'success', TIMING_MS.FEEDBACK);
 }
