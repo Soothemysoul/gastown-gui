@@ -27,7 +27,6 @@ import { startOnboarding, shouldShowOnboarding, resetOnboarding } from './compon
 
 const ONBOARDING_START_DELAY_MS = 500;
 const TUTORIAL_START_DELAY_MS = 1000;
-const WS_RECONNECT_DELAY_MS = 5000;
 const BACKGROUND_PRELOAD_DELAY_MS = 500;
 const CONNECTION_ERROR_TOAST_DURATION_MS = 10000;
 const REFRESH_TOAST_DURATION_MS = 1000;
@@ -263,9 +262,6 @@ function connectWebSocket() {
     console.log('[WS] Disconnected');
     updateConnectionStatus('disconnected');
     showToast('Disconnected from server', 'warning');
-
-    // Attempt reconnect after 5 seconds
-    setTimeout(connectWebSocket, WS_RECONNECT_DELAY_MS);
   };
 
   ws.onerror = (error) => {
