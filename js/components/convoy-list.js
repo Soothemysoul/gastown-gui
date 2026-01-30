@@ -7,6 +7,7 @@
 
 import { escapeHtml, escapeAttr, truncate } from '../utils/html.js';
 import { formatTimeAgoOrDate } from '../utils/formatting.js';
+import { TIMING_MS } from '../shared/timing.js';
 
 // Status icons for convoys
 const STATUS_ICONS = {
@@ -162,7 +163,7 @@ function toggleConvoyExpand(card, convoyId) {
     const detail = card.querySelector('.convoy-detail');
     if (detail) {
       detail.style.maxHeight = '0';
-      setTimeout(() => detail.remove(), 300);
+      setTimeout(() => detail.remove(), TIMING_MS.ANIMATION);
     }
   } else {
     expandedConvoys.add(convoyId);

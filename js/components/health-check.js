@@ -7,6 +7,7 @@
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { escapeHtml } from '../utils/html.js';
+import { TIMING_MS } from '../shared/timing.js';
 
 let container = null;
 let refreshBtn = null;
@@ -271,7 +272,7 @@ function setupEventListeners(checks) {
         try {
           const result = await api.runDoctorFix();
           showToast('Doctor fix completed. Refreshing...', 'success');
-          setTimeout(() => loadHealthCheck(), 1000);
+          setTimeout(() => loadHealthCheck(), TIMING_MS.REFRESH_DELAY);
         } catch (err) {
           showToast(`Fix failed: ${err.message}`, 'error');
           fixAllBtn.disabled = false;
@@ -298,7 +299,7 @@ function setupCopyButtons() {
         btn.innerHTML = '<span class="material-icons">check</span>';
         setTimeout(() => {
           btn.innerHTML = '<span class="material-icons">content_copy</span>';
-        }, 2000);
+        }, TIMING_MS.FEEDBACK);
       } catch (err) {
         showToast('Failed to copy', 'error');
       }

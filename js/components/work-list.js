@@ -10,6 +10,7 @@ import { escapeHtml, truncate } from '../utils/html.js';
 import { formatTimeAgoOrDate } from '../utils/formatting.js';
 import { getBeadPriority } from '../shared/beads.js';
 import { getGitHubRepoForBead } from '../shared/github-repos.js';
+import { TIMING_MS } from '../shared/timing.js';
 
 // Issue type icons
 const TYPE_ICONS = {
@@ -297,7 +298,7 @@ function showBeadDetail(beadId, bead) {
  */
 function showCopyToast(message) {
   // Try to use the existing toast system
-  const event = new CustomEvent('toast:show', { detail: { message, type: 'success', duration: 2000 } });
+  const event = new CustomEvent('toast:show', { detail: { message, type: 'success', duration: TIMING_MS.FEEDBACK } });
   document.dispatchEvent(event);
 
   // Fallback: create a simple toast if no handler
@@ -322,6 +323,6 @@ function showCopyToast(message) {
       animation: fadeInUp 0.2s ease;
     `;
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2000);
+    setTimeout(() => toast.remove(), TIMING_MS.FEEDBACK);
   }, 0);
 }

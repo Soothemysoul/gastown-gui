@@ -12,6 +12,7 @@ import { escapeHtml, escapeAttr, capitalize } from '../utils/html.js';
 import { debounce } from '../utils/performance.js';
 import { getBeadPriority } from '../shared/beads.js';
 import { getGitHubRepoForBead } from '../shared/github-repos.js';
+import { TIMING_MS } from '../shared/timing.js';
 
 // Modal registry
 const modals = new Map();
@@ -205,7 +206,7 @@ function showEventDrivenModal(options) {
   // Focus first input
   const firstInput = dynamicModal.querySelector('input, textarea, select');
   if (firstInput) {
-    setTimeout(() => firstInput.focus(), 100);
+    setTimeout(() => firstInput.focus(), TIMING_MS.FOCUS_DELAY);
   }
 }
 
@@ -251,7 +252,7 @@ export function openModal(modalId, data = {}) {
   // Focus first input
   const firstInput = config.element.querySelector('input, textarea, select');
   if (firstInput) {
-    setTimeout(() => firstInput.focus(), 100);
+    setTimeout(() => firstInput.focus(), TIMING_MS.FOCUS_DELAY);
   }
 }
 

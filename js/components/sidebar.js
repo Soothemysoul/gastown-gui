@@ -8,6 +8,7 @@ import { AGENT_TYPES, STATUS_ICONS, getAgentType, getAgentConfig, formatAgentNam
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { escapeHtml, escapeAttr, truncate, capitalize } from '../utils/html.js';
+import { TIMING_MS } from '../shared/timing.js';
 
 // Simple pluralization for agent type labels
 function pluralize(word, count) {
@@ -482,8 +483,8 @@ function switchToAgentsTab(agentId) {
       if (agentCard) {
         agentCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
         agentCard.classList.add('highlight');
-        setTimeout(() => agentCard.classList.remove('highlight'), 2000);
+        setTimeout(() => agentCard.classList.remove('highlight'), TIMING_MS.FEEDBACK);
       }
-    }, 100);
+    }, TIMING_MS.FOCUS_DELAY);
   }
 }
