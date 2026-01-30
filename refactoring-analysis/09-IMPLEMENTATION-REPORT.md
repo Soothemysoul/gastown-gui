@@ -4,6 +4,7 @@
 
 - **Branch:** `refactor`
 - **Status:** green (`npm test`)
+- **Head:** `afb8eff` (2026-01-30)
 - **Goal:** demonstrate a substantial PoEAA-style refactor (Gateway + Service Layer + Value Objects) for a CLI-bridge backend, while keeping API behavior stable and adding real automated tests.
 
 ## What We Built
@@ -62,11 +63,16 @@ Result: `server.js` is trending toward a composition root (dependency wiring + r
 - **Unit tests** for gateways/services/value objects (no real CLI tools required).
 - **Route tests** spin up a real Express app with stub services on an ephemeral port to lock down HTTP behavior.
 - **Existing integration/e2e suites** continue to run against the mock server.
+- **UI smoke test** clicks through the major tabs and asserts no browser `console.error` or `pageerror` events (with a small allowlist for non-app resource noise).
 
 ## Evidence (Commits)
 
 See `git log --oneline` on `refactor` for the full, incremental trail. Recent key commits:
 
+- `afb8eff` test(e2e): add UI smoke test and browser error capture
+- `3db06f8` fix(mail): make reply work in mail detail modal
+- `b2675ba` test(mock-server): add GitHub PR and issue endpoints
+- `4dabe6b` test: use ephemeral mock server port by default
 - `34f9e31` test: bind mock server to localhost
 - `99a0bf2` feat(server): add BDGateway.create
 - `2cc97b8` feat(server): add GTGateway.escalate
@@ -79,4 +85,3 @@ See `git log --oneline` on `refactor` for the full, incremental trail. Recent ke
 1. **Extract remaining endpoints** into Service/Route modules (mail, polecat control, rigs/crews, doctor/setup, and bead links `GET /api/bead/:beadId/links`).
 2. **Activity stream refactor:** move WebSocket feed/start/stop into `ActivityStreamService` so it’s unit-testable and uses `CommandRunner.spawn`.
 3. **Retire legacy helpers:** once coverage is in place, remove `executeGT`, `executeBD`, and remaining direct `execFileAsync(...)` callsites.
-

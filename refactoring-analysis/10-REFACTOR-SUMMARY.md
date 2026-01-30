@@ -3,10 +3,10 @@
 ## Snapshot
 
 - **Branch:** `refactor`
-- **Diff range:** `a4ebe276816c373fc99457fa58756aa23966096e` → `HEAD`
+- **Diff range:** `a4ebe27` → `afb8eff` (current tip)
 - **Base:** `a4ebe27` (2026-01-17) — `chore: bump version to 0.9.2 for npm publish`
-- **Head:** current `refactor` tip (changes as new commits land)
-- **Tests:** `npm test` ✅ (Vitest) — 35 files / 299 tests passed (local run 2026-01-30)
+- **Head:** `afb8eff` (2026-01-30) — `test(e2e): add UI smoke test and browser error capture`
+- **Tests:** `npm test` ✅ (Vitest) — 35 files / 300 tests passed (local run 2026-01-30)
 
 ## Why This Refactor Exists
 
@@ -39,12 +39,12 @@ This repo’s backend is fundamentally a **GUI → CLI bridge**: it receives HTT
 
 ```mermaid
 flowchart LR
-  Browser[Browser UI] -->|HTTP + WebSocket| Monolith[server.js - monolith]
+  Browser[Browser UI] -->|HTTP + WebSocket| Monolith["server.js<br/>monolith"]
   Monolith -->|exec/spawn| GT[gt CLI]
   Monolith -->|exec/spawn| BD[bd CLI]
   Monolith -->|exec/spawn| GH[gh CLI]
   Monolith -->|exec/spawn| TM[tmux]
-  Monolith --> Cache[ad-hoc caching]
+  Monolith --> Cache["ad-hoc<br/>caching"]
   Monolith --> FS[filesystem]
 ```
 
@@ -62,14 +62,14 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  Browser[Browser UI] -->|HTTP| Routes[server/routes - thin adapters]
-  Browser -->|WebSocket| WS[server.js - broadcast]
+  Browser[Browser UI] -->|HTTP| Routes["server/routes<br/>thin adapters"]
+  Browser -->|WebSocket| WS["server.js<br/>broadcast"]
 
-  subgraph Core[Backend Application Core - server/]
-    Routes --> Services[server/services - Service Layer]
-    Services --> VOs[server/domain/values - Value Objects]
+  subgraph Core["Backend Application Core<br/>server/"]
+    Routes --> Services["server/services<br/>Service Layer"]
+    Services --> VOs["server/domain/values<br/>Value Objects"]
     Services --> CacheReg[CacheRegistry]
-    Services --> Gateways[server/gateways - Gateway]
+    Services --> Gateways["server/gateways<br/>Gateway"]
     Gateways --> Runner[CommandRunner]
   end
 
@@ -143,14 +143,23 @@ The totals below distinguish “production code” from tests/docs so the number
 
 ### Production code (excluding tests/docs)
 
-- Production code: **+1909 / -996** (net **+913**)
+- Production code: **+2412 / -1486** (net **+926**)
   - Backend (`server.js` + `server/`): **+1908 / -991** (net **+917**)
-  - Config/other: **+1 / -5** (net **-4**)
+  - Frontend (`js/` + `css/` + `index.html`): **+498 / -485** (net **+13**)
+  - Config/other: **+6 / -10** (net **-4**)
 - `server.js` alone: **2542 → 1671** (net **-871**)
 
 ### Tests (excluded from production totals)
 
-- Tests: **+1702 / -2** (net **+1700**)
+- Tests: **+2131 / -12** (net **+2119**)
+
+### Docs & analysis (excluded from production totals)
+
+- Docs/analysis: **+3073 / -13** (net **+3060**)
+
+### Scripts (excluded from production totals)
+
+- Scripts: **+288 / -0** (net **+288**)
 
 ### Backend / Server Refactor Files
 
@@ -187,27 +196,29 @@ The totals below distinguish “production code” from tests/docs so the number
 
 | Status | File | + | - | Net |
 |---|---|---:|---:|---:|
-| M | `js/app.js` | 19 | 13 | +6 |
+| M | `js/app.js` | 40 | 23 | +17 |
 | M | `js/components/activity-feed.js` | 3 | 44 | -41 |
-| M | `js/components/agent-grid.js` | 5 | 19 | -14 |
+| M | `js/components/agent-grid.js` | 10 | 23 | -13 |
 | M | `js/components/autocomplete.js` | 3 | 9 | -6 |
-| M | `js/components/convoy-list.js` | 6 | 19 | -13 |
-| M | `js/components/crew-list.js` | 2 | 1 | +1 |
-| M | `js/components/dashboard.js` | 3 | 26 | -23 |
+| M | `js/components/convoy-list.js` | 12 | 24 | -12 |
+| M | `js/components/crew-list.js` | 8 | 6 | +2 |
+| M | `js/components/dashboard.js` | 6 | 28 | -22 |
 | M | `js/components/formula-list.js` | 3 | 11 | -8 |
 | M | `js/components/health-check.js` | 3 | 2 | +1 |
 | M | `js/components/issue-list.js` | 3 | 11 | -8 |
-| M | `js/components/mail-list.js` | 4 | 2 | +2 |
-| M | `js/components/modals.js` | 34 | 51 | -17 |
+| M | `js/components/mail-list.js` | 8 | 5 | +3 |
+| M | `js/components/modals.js` | 73 | 69 | +4 |
+| M | `js/components/onboarding.js` | 2 | 1 | +1 |
 | M | `js/components/pr-list.js` | 1 | 8 | -7 |
-| M | `js/components/rig-list.js` | 2 | 1 | +1 |
-| M | `js/components/sidebar.js` | 12 | 11 | +1 |
+| M | `js/components/rig-list.js` | 9 | 7 | +2 |
+| M | `js/components/sidebar.js` | 14 | 12 | +2 |
 | M | `js/components/toast.js` | 4 | 10 | -6 |
-| M | `js/components/work-list.js` | 13 | 120 | -107 |
+| M | `js/components/work-list.js` | 16 | 122 | -106 |
 | M | `js/shared/agent-types.js` | 2 | 10 | -8 |
 | A | `js/shared/animations.js` | 16 | 0 | +16 |
 | A | `js/shared/beads.js` | 17 | 0 | +17 |
 | A | `js/shared/close-reason.js` | 46 | 0 | +46 |
+| M | `js/shared/events.js` | 7 | 0 | +7 |
 | A | `js/shared/github-repos.js` | 46 | 0 | +46 |
 | A | `js/shared/timing.js` | 12 | 0 | +12 |
 | M | `js/utils/formatting.js` | 74 | 13 | +61 |
@@ -219,7 +230,10 @@ The totals below distinguish “production code” from tests/docs so the number
 
 | Status | File | + | - | Net |
 |---|---|---:|---:|---:|
-| M | `test/mock-server.js` | 2 | 2 | +0 |
+| M | `test/e2e.test.js` | 260 | 0 | +260 |
+| M | `test/globalSetup.js` | 11 | 2 | +9 |
+| M | `test/mock-server.js` | 127 | 8 | +119 |
+| M | `test/setup.js` | 33 | 2 | +31 |
 | A | `test/unit/agentPath.test.js` | 22 | 0 | +22 |
 | A | `test/unit/animationsShared.test.js` | 26 | 0 | +26 |
 | A | `test/unit/bdGateway.test.js` | 89 | 0 | +89 |
@@ -254,10 +268,10 @@ The totals below distinguish “production code” from tests/docs so the number
 | Status | File | + | - | Net |
 |---|---|---:|---:|---:|
 | A | `AGENT_HANDOFF.md` | 177 | 0 | +177 |
-| M | `CLAUDE.md` | 74 | 13 | +61 |
 | A | `ai-memory/refactor-a4ebe27/init.md` | 36 | 0 | +36 |
 | A | `ai-memory/refactor-a4ebe27/plan.md` | 43 | 0 | +43 |
 | A | `ai-memory/refactor-a4ebe27/progress.md` | 92 | 0 | +92 |
+| M | `CLAUDE.md` | 74 | 13 | +61 |
 | A | `refactoring-analysis/00-SUMMARY-IMPRESSIVE-REFACTORINGS.md` | 427 | 0 | +427 |
 | A | `refactoring-analysis/01-code-smells-components.md` | 197 | 0 | +197 |
 | A | `refactoring-analysis/02-code-smells-modals-dashboard.md` | 206 | 0 | +206 |
@@ -268,7 +282,7 @@ The totals below distinguish “production code” from tests/docs so the number
 | A | `refactoring-analysis/07-PROCESS-AND-KNOWLEDGE.md` | 175 | 0 | +175 |
 | A | `refactoring-analysis/08-IMPLEMENTATION-PLAN.md` | 186 | 0 | +186 |
 | A | `refactoring-analysis/09-IMPLEMENTATION-REPORT.md` | 82 | 0 | +82 |
-| A | `refactoring-analysis/10-REFACTOR-SUMMARY.md` | 258 | 0 | +258 |
+| A | `refactoring-analysis/10-REFACTOR-SUMMARY.md` | 295 | 0 | +295 |
 | A | `refactoring-analysis/trace/README.md` | 23 | 0 | +23 |
 | A | `refactoring-analysis/trace/REPORT.md` | 31 | 0 | +31 |
 | A | `refactoring-analysis/trace/user-prompts.sanitized.jsonl` | 450 | 0 | +450 |
@@ -284,6 +298,7 @@ The totals below distinguish “production code” from tests/docs so the number
 
 | Status | File | + | - | Net |
 |---|---|---:|---:|---:|
+| M | `package.json` | 5 | 5 | +0 |
 | M | `vitest.config.js` | 1 | 5 | -4 |
 
 ## “Proof” Artifacts (What’s Safe to Share)
