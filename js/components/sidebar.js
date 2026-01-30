@@ -371,15 +371,15 @@ function showAgentQuickActions(nodeEl, agentId) {
   `;
 
   // Position the popover
-  popover.style.cssText = `
-    position: fixed;
-    top: ${rect.bottom + 8}px;
-    left: ${rect.left}px;
-    z-index: 9999;
-    min-width: 220px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-lg);
+	  popover.style.cssText = `
+	    position: fixed;
+	    top: ${rect.bottom + 8}px;
+	    left: ${rect.left}px;
+	    z-index: var(--z-tooltip);
+	    min-width: 220px;
+	    background: var(--bg-elevated);
+	    border: 1px solid var(--border-default);
+	    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
     padding: var(--space-md);
     animation: fadeIn 0.15s ease;
