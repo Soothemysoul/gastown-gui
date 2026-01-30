@@ -10,7 +10,7 @@
 
 ## Why This Refactor Exists
 
-This repo’s backend is fundamentally a **GUI → CLI bridge**: it receives HTTP requests from the browser UI and translates them into calls to external systems (`gt`, `bd`, `gh`, `tmux`, filesystem). That is exactly the domain where PoEAA-style **Gateway** and **Service Layer** abstractions pay off:
+This repo’s backend is fundamentally a **GUI → CLI bridge**: it receives HTTP requests from the browser UI and translates them into calls to external systems (`gt`, `bd`, `gh`, `tmux`, filesystem). That is exactly the domain where Martin Fowler’s *Patterns of Enterprise Application Architecture* (PoEAA) patterns like **Gateway** and **Service Layer** pay off:
 
 - **Gateway**: encapsulate each external system behind a stable interface, normalize exit codes and output, and make it testable.
 - **Service Layer**: define an explicit set of application operations (“business transactions”) independent of HTTP.
