@@ -1,0 +1,18 @@
+{
+  "targetCwd": "/home/ab/GitHub/tools/gastown-gui-work1",
+  "generatedAt": "2026-01-30T03:02:40.863Z",
+  "entries": 450,
+  "sources": {
+    "claude": 13,
+    "codex": 437
+  },
+  "redactions": {
+    "EMAIL": 2,
+    "HOME_DIR": 50
+  },
+  "codexFiles": [
+    "rollout-2026-01-30T11-03-39-019c0c36-6df3-72c3-83a4-cb6646b9ea75.jsonl",
+    "rollout-2026-01-30T12-45-20-019c0c93-8728-76d3-96f6-8a9509b99c17.jsonl"
+  ],
+  "claudeProjectDir": "/home/ab/.claude/projects/-home-ab-GitHub-tools-gastown-gui-work1"
+}
