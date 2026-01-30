@@ -10,6 +10,7 @@ import { initAutocomplete, renderBeadItem, renderAgentItem } from './autocomplet
 import { state } from '../state.js';
 import { escapeHtml, escapeAttr, capitalize } from '../utils/html.js';
 import { debounce } from '../utils/performance.js';
+import { getGitHubRepoForBead } from '../shared/github-repos.js';
 
 // Modal registry
 const modals = new Map();
@@ -21,29 +22,7 @@ let overlay = null;
 let peekAutoRefreshInterval = null;
 let currentPeekAgentId = null;
 
-// GitHub repo mapping for known rigs (same as work-list.js)
-// Configure this mapping to link beads/PRs to your GitHub repos
-const GITHUB_REPOS = {
-  // Example: 'my-project': 'myorg/my-project',
-};
-
-function getGitHubRepoForBead(beadId) {
-  if (!beadId) return null;
-  const prefixMatch = beadId.match(/^([a-z]+)-/i);
-  if (prefixMatch) {
-    const prefix = prefixMatch[1].toLowerCase();
-    if (GITHUB_REPOS[prefix]) return GITHUB_REPOS[prefix];
-  }
-  for (const [key, repo] of Object.entries(GITHUB_REPOS)) {
-    if (repo && beadId.toLowerCase().includes(key.toLowerCase())) {
-      return repo;
-    }
-  }
-  for (const repo of Object.values(GITHUB_REPOS)) {
-    if (repo) return repo;
-  }
-  return null;
-}
+// GitHub repo mapping is configured in `js/shared/github-repos.js`.
 
 /**
  * Initialize modals system

@@ -7,6 +7,7 @@
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { escapeHtml, truncate } from '../utils/html.js';
+import { getGitHubRepoForBead } from '../shared/github-repos.js';
 
 // Issue type icons
 const TYPE_ICONS = {
@@ -29,45 +30,7 @@ const STATUS_CONFIG = {
   blocked: { icon: 'block', class: 'status-blocked', label: 'Blocked' },
 };
 
-// GitHub repo mapping for known rigs
-// Format: { rigName: 'org/repo' } or { beadPrefix: 'org/repo' }
-// Configure this mapping to link beads/PRs to your GitHub repos
-const GITHUB_REPOS = {
-  // Example: Map rig names to GitHub repos
-  // 'my-project': 'myorg/my-project',
-  // 'another-rig': 'myorg/another-repo',
-
-  // Example: Map bead ID prefixes to repos
-  // 'proj': 'myorg/project-repo',
-};
-
-/**
- * Get GitHub repo for a bead based on its ID or rig
- */
-function getGitHubRepoForBead(beadId) {
-  if (!beadId) return null;
-
-  // Try to match by bead prefix (e.g., "hq-123" → "hq")
-  const prefixMatch = beadId.match(/^([a-z]+)-/i);
-  if (prefixMatch) {
-    const prefix = prefixMatch[1].toLowerCase();
-    if (GITHUB_REPOS[prefix]) return GITHUB_REPOS[prefix];
-  }
-
-  // Try to match by rig name directly
-  for (const [key, repo] of Object.entries(GITHUB_REPOS)) {
-    if (repo && beadId.toLowerCase().includes(key.toLowerCase())) {
-      return repo;
-    }
-  }
-
-  // Default: try the first available repo
-  for (const repo of Object.values(GITHUB_REPOS)) {
-    if (repo) return repo;
-  }
-
-  return null;
-}
+// GitHub repo mapping is configured in `js/shared/github-repos.js`.
 
 /**
  * Parse close_reason for commit/PR references and make them clickable
