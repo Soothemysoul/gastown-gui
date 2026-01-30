@@ -20,6 +20,7 @@ import readline from 'readline';
 import { fileURLToPath } from 'url';
 
 import { createApp } from './server/app/createApp.js';
+import { AgentPath } from './server/domain/values/AgentPath.js';
 
 const execFileAsync = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
@@ -183,21 +184,13 @@ function quoteArg(arg) {
   return "'" + str.replace(/'/g, "'\\''") + "'";
 }
 
-const SAFE_SEGMENT_RE = /^[A-Za-z0-9._-]+$/;
-
-function isSafeSegment(value) {
-  if (typeof value !== 'string' || value.length === 0 || value.length > 128) return false;
-  if (value === '.' || value === '..') return false;
-  return SAFE_SEGMENT_RE.test(value);
-}
-
-function validateRigAndName(req, res) {
-  const { rig, name } = req.params;
-  if (!isSafeSegment(rig) || !isSafeSegment(name)) {
+function requireAgentPath(req, res) {
+  try {
+    return new AgentPath(req.params.rig, req.params.name);
+  } catch {
     res.status(400).json({ error: 'Invalid rig or agent name' });
-    return false;
+    return null;
   }
-  return true;
 }
 
 // Check if a specific tmux session is running
@@ -1280,10 +1273,10 @@ app.get('/api/mayor/output', async (req, res) => {
 
 // Get polecat output (what they're working on)
 app.get('/api/polecat/:rig/:name/output', async (req, res) => {
-  if (!validateRigAndName(req, res)) return;
-  const { rig, name } = req.params;
+  const agent = requireAgentPath(req, res);
+  if (!agent) return;
   const lines = parseInt(req.query.lines) || 50;
-  const sessionName = `gt-${rig}-${name}`;
+  const sessionName = agent.toSessionName();
 
   const output = await getPolecatOutput(sessionName, lines);
   if (output !== null) {
@@ -1295,9 +1288,11 @@ app.get('/api/polecat/:rig/:name/output', async (req, res) => {
 
 // Get full agent transcript (Claude session log)
 app.get('/api/polecat/:rig/:name/transcript', async (req, res) => {
-  if (!validateRigAndName(req, res)) return;
-  const { rig, name } = req.params;
-  const sessionName = `gt-${rig}-${name}`;
+  const agent = requireAgentPath(req, res);
+  if (!agent) return;
+  const rig = agent.rig.value;
+  const name = agent.name.value;
+  const sessionName = agent.toSessionName();
 
   try {
     // First try to get tmux output (full history)
@@ -1357,9 +1352,11 @@ app.get('/api/polecat/:rig/:name/transcript', async (req, res) => {
 
 // Start a polecat/agent
 app.post('/api/polecat/:rig/:name/start', async (req, res) => {
-  if (!validateRigAndName(req, res)) return;
-  const { rig, name } = req.params;
-  const agentPath = `${rig}/${name}`;
+  const agent = requireAgentPath(req, res);
+  if (!agent) return;
+  const rig = agent.rig.value;
+  const name = agent.name.value;
+  const agentPath = agent.toString();
 
   console.log(`[Agent] Starting ${agentPath}...`);
 
@@ -1381,9 +1378,11 @@ app.post('/api/polecat/:rig/:name/start', async (req, res) => {
 
 // Stop a polecat/agent
 app.post('/api/polecat/:rig/:name/stop', async (req, res) => {
-  if (!validateRigAndName(req, res)) return;
-  const { rig, name } = req.params;
-  const sessionName = `gt-${rig}-${name}`;
+  const agent = requireAgentPath(req, res);
+  if (!agent) return;
+  const rig = agent.rig.value;
+  const name = agent.name.value;
+  const sessionName = agent.toSessionName();
 
   console.log(`[Agent] Stopping ${rig}/${name}...`);
 
@@ -1406,10 +1405,12 @@ app.post('/api/polecat/:rig/:name/stop', async (req, res) => {
 
 // Restart a polecat/agent (stop then start)
 app.post('/api/polecat/:rig/:name/restart', async (req, res) => {
-  if (!validateRigAndName(req, res)) return;
-  const { rig, name } = req.params;
-  const agentPath = `${rig}/${name}`;
-  const sessionName = `gt-${rig}-${name}`;
+  const agent = requireAgentPath(req, res);
+  if (!agent) return;
+  const rig = agent.rig.value;
+  const name = agent.name.value;
+  const agentPath = agent.toString();
+  const sessionName = agent.toSessionName();
 
   console.log(`[Agent] Restarting ${agentPath}...`);
 

@@ -22,6 +22,10 @@ gastown-gui/
 ├── server/                # Backend modules (in progress)
 │   ├── app/
 │   │   └── createApp.js
+│   ├── domain/
+│   │   └── values/
+│   │       ├── AgentPath.js
+│   │       └── SafeSegment.js
 │   ├── infrastructure/
 │   │   ├── CacheRegistry.js
 │   │   ├── CommandRunner.js
@@ -89,6 +93,8 @@ gastown-gui/
 │   │   ├── tmuxGateway.test.js    # TmuxGateway tests
 │   │   ├── githubGateway.test.js  # GitHubGateway tests
 │   │   ├── gitGateway.test.js     # GitGateway tests
+│   │   ├── safeSegment.test.js    # SafeSegment tests
+│   │   ├── agentPath.test.js      # AgentPath tests
 │   │   └── quoteArg.test.js   # Shell injection security tests
 │   └── integration/
 │       ├── endpoints.test.js  # API endpoint tests
