@@ -173,7 +173,7 @@ export function showLoading(message) {
         <span class="material-icons toast-icon">check_circle</span>
         <span class="toast-message">${escapeHtml(newMessage)}</span>
       `;
-      setTimeout(() => dismissToast(toast), 2000);
+      setTimeout(() => dismissToast(toast), TOAST_DURATIONS.success);
     },
     error: (newMessage) => {
       toast.className = 'toast toast-error show';
@@ -181,7 +181,7 @@ export function showLoading(message) {
         <span class="material-icons toast-icon">error</span>
         <span class="toast-message">${escapeHtml(newMessage)}</span>
       `;
-      setTimeout(() => dismissToast(toast), 4000);
+      setTimeout(() => dismissToast(toast), TOAST_DURATIONS.error);
     },
   };
 }
