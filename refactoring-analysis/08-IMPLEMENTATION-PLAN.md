@@ -12,6 +12,26 @@ This is intentionally not “just move files around”: it changes the architect
 
 ---
 
+## Current Progress (on `refactor` branch)
+
+Completed:
+- Infrastructure primitives: `CommandRunner`, `CacheRegistry`, `EventBus`
+- Gateways: `GTGateway`, `BDGateway`, `TmuxGateway`, `GitHubGateway`, `GitGateway`
+- Value objects: `SafeSegment`, `AgentPath` (used for polecat endpoints)
+- Services + route modules migrated out of `server.js`:
+  - Formulas (`FormulaService` + `routes/formulas.js`)
+  - Status/targets (`StatusService`/`TargetService` + route modules)
+  - GitHub (`GitHubService` + `routes/github.js`)
+  - Convoys (`ConvoyService` + `routes/convoys.js`)
+- Backend tests that run a real Express app with stubbed dependencies (no CLI tools required)
+
+Still pending (highest leverage next):
+- Migrate remaining “core workflow” endpoints (`/api/sling`, beads/work/mail/polecat/doctor/rigs/crews)
+- Remove or retire legacy helpers (`executeGT`, scattered `execFileAsync(...)`) as coverage increases
+- Extract WebSocket activity stream into `ActivityStreamService` and make start/stop behavior testable
+
+---
+
 ## Why This is the Highest-Benefit Refactor
 
 **Domain fit:** This app is a *CLI bridge*. Gateway is the textbook boundary for external-system access (PoEAA).
@@ -163,4 +183,3 @@ Then expand:
 - External tool calls are routed through gateways (no scattered `execFileAsync('gt'|'bd'|'tmux'|'gh'|'git')`).
 - Formula update/delete endpoints work and are covered by tests.
 - New backend tests exist that would fail if the old runtime bugs reappear.
-

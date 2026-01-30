@@ -25,6 +25,16 @@
 - Benefits documented for each refactoring
 - Rankings by complexity/benefit/impressiveness
 
+### Implementation Progress ✅
+- Backend “Application Core” structure exists in `server/` (gateways/services/routes/infrastructure/domain)
+- Real backend route tests added (Express app started on ephemeral ports, no `gt/bd/gh/tmux` required)
+- Endpoints migrated out of `server.js` into services + route modules:
+  - `/api/status` → `server/services/StatusService.js` + `server/routes/status.js`
+  - `/api/targets` → `server/services/TargetService.js` + `server/routes/targets.js`
+  - `/api/convoys`, `/api/convoy/:id`, `POST /api/convoy` → `server/services/ConvoyService.js` + `server/routes/convoys.js`
+  - `/api/github/*` → `server/services/GitHubService.js` + `server/routes/github.js` (backed by `server/gateways/GitHubGateway.js`)
+  - `/api/formula/*` → `server/services/FormulaService.js` + `server/routes/formulas.js` (fixes update/delete runtime bugs)
+
 ### Documents Created
 ```
 refactoring-analysis/
@@ -61,22 +71,19 @@ gh pr create --title "refactor: comprehensive codebase analysis with PoEAA patte
 
 ### Option B: Implement the Refactorings
 
-**Recommended order (from 05-RANKINGS.md):**
+**Recommended order (from 05-RANKINGS.md), updated for current progress:**
 
-1. **Gateway Pattern** (Tier S - most impressive)
-   - Create `server/gateways/GTGateway.js`
-   - Wrap all `executeGT()` calls (45 occurrences in server.js)
-   - Create `BDGateway.js`, `TmuxGateway.js`, `GitHubGateway.js`
+1. **Gateway Pattern** ✅ (in place, partial adoption)
+   - Gateways exist (`GTGateway`, `BDGateway`, `TmuxGateway`, `GitHubGateway`, `GitGateway`)
+   - Next: continue migrating remaining endpoints off `executeGT()` and direct `execFileAsync(...)`
 
-2. **Value Objects** (Tier A)
-   - Create `server/domain/values/AgentPath.js`
-   - Replace `${rig}/${name}` constructions
-   - Replace `gt-${rig}-${name}` session name constructions
+2. **Value Objects** ✅ (started)
+   - `SafeSegment`, `AgentPath` exist and are used in polecat endpoints
+   - Next: expand where strings represent domain identifiers (session names, rig names, bead IDs)
 
-3. **Service Layer** (Tier S)
-   - Create `server/services/ConvoyService.js`
-   - Move business logic from route handlers
-   - Thin down handlers to validation + delegation
+3. **Service Layer** ✅ (in progress)
+   - Services exist: `FormulaService`, `StatusService`, `TargetService`, `ConvoyService`, `GitHubService`
+   - Next services (high leverage): `WorkService` (sling), `MailService`, `BeadService`, `PolecatService`, `DoctorService`, `RigService`, `CrewService`
 
 4. **Frontend: Form Handler Utility**
    - Create `js/utils/form-handler.js`
@@ -107,12 +114,12 @@ It's not just impressive - it's the **correct** solution.
 
 ## Critical Files in Codebase
 
-| File | Lines | Issue |
-|------|-------|-------|
-| `server.js` | 2542 | No separation of concerns, CLI calls scattered |
-| `js/components/modals.js` | 1839 | God class - 15+ modal types |
-| `js/app.js` | 1133 | Too many responsibilities |
-| `js/components/onboarding.js` | 715 | Long methods |
+| File | Issue |
+|------|-------|
+| `server.js` | Still large; continued endpoint migration will keep shrinking it |
+| `js/components/modals.js` | God file with many modal types |
+| `js/app.js` | Too many responsibilities |
+| `js/components/onboarding.js` | Long methods |
 
 ---
 
