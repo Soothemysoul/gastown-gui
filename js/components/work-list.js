@@ -7,6 +7,7 @@
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { escapeHtml, truncate } from '../utils/html.js';
+import { formatTimeAgoOrDate } from '../utils/formatting.js';
 import { getGitHubRepoForBead } from '../shared/github-repos.js';
 
 // Issue type icons
@@ -258,7 +259,7 @@ function renderBeadCard(bead, index) {
 
       <div class="bead-footer">
         <div class="bead-time">
-          ${bead.closed_at ? `Completed ${formatTime(bead.closed_at)}` : `Created ${formatTime(bead.created_at)}`}
+          ${bead.closed_at ? `Completed ${formatTimeAgoOrDate(bead.closed_at)}` : `Created ${formatTimeAgoOrDate(bead.created_at)}`}
         </div>
         ${status !== 'closed' ? `
           <div class="bead-actions">
@@ -321,16 +322,4 @@ function showCopyToast(message) {
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 2000);
   }, 0);
-}
-
-function formatTime(timestamp) {
-  if (!timestamp) return '';
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diff = now - date;
-
-  if (diff < 60000) return 'just now';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-  return date.toLocaleDateString();
 }

@@ -6,6 +6,7 @@
  */
 
 import { escapeHtml, escapeAttr, truncate } from '../utils/html.js';
+import { formatTimeAgoOrDate } from '../utils/formatting.js';
 
 // Status icons for convoys
 const STATUS_ICONS = {
@@ -265,7 +266,7 @@ function renderConvoyCard(convoy, index) {
           ${renderConvoyStats(convoy)}
         </div>
         <div class="convoy-time">
-          ${formatTime(convoy.created_at || convoy.timestamp)}
+          ${formatTimeAgoOrDate(convoy.created_at || convoy.timestamp, { justNowLabel: 'Just now' })}
         </div>
       </div>
     </div>
@@ -516,20 +517,4 @@ function getWorkerInitials(name) {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
   return name.slice(0, 2).toUpperCase();
-}
-
-function formatTime(timestamp) {
-  if (!timestamp) return '';
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diff = now - date;
-
-  // Less than 1 minute
-  if (diff < 60000) return 'Just now';
-  // Less than 1 hour
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-  // Less than 24 hours
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-  // Otherwise show date
-  return date.toLocaleDateString();
 }

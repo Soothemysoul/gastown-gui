@@ -8,6 +8,7 @@ import { AGENT_TYPES, getAgentType, getAgentConfig, formatAgentName } from '../s
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { escapeHtml, truncate } from '../utils/html.js';
+import { TIME_MS } from '../utils/formatting.js';
 import { debounce } from '../utils/performance.js';
 
 // Priority icons and colors
@@ -404,7 +405,7 @@ function formatTime(timestamp) {
   }
 
   // This week - show day
-  if (diff < 7 * 86400000) {
+  if (diff < TIME_MS.WEEK) {
     return date.toLocaleDateString([], { weekday: 'short' });
   }
 
