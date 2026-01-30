@@ -853,16 +853,21 @@ function stopActivitySimulation() {
 }
 
 // Start server
-// Use 5678 by default to avoid port conflicts with Claude orchestrator (3000)
-// and to keep production server port (5555) free
-const PORT = process.env.PORT || 5678;
-console.log(`[Mock Server] PORT configured as: ${PORT}`);
+const DEFAULT_PORT = 5678;
 
-export function startMockServer() {
+function normalizePort(value) {
+  if (value === undefined || value === null || value === '') return DEFAULT_PORT;
+  const port = Number(value);
+  return Number.isFinite(port) && port >= 0 ? port : DEFAULT_PORT;
+}
+
+export function startMockServer({ port } = {}) {
+  const requestedPort = normalizePort(port ?? process.env.PORT);
   return new Promise((resolve) => {
-    console.log(`[Mock Server] Starting on port ${PORT}...`);
-    server.listen(PORT, '127.0.0.1', () => {
-      console.log(`[Mock Server] Running on http://127.0.0.1:${PORT}`);
+    console.log(`[Mock Server] Starting on port ${requestedPort || '(ephemeral)'}...`);
+    server.listen(requestedPort, '127.0.0.1', () => {
+      const actualPort = server.address()?.port ?? requestedPort;
+      console.log(`[Mock Server] Running on http://127.0.0.1:${actualPort}`);
       startActivitySimulation();
       resolve(server);
     });

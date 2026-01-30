@@ -7,8 +7,7 @@
 import puppeteer from 'puppeteer';
 
 // Test configuration
-// Use 5678 by default to avoid port conflicts with Claude orchestrator (3000)
-// and to keep production server port (5555) free
+// Use TEST_URL (written by globalSetup) when available; otherwise fall back to PORT.
 const PORT = process.env.PORT || 5678;
 export const CONFIG = {
   baseUrl: process.env.TEST_URL || `http://localhost:${PORT}`,
