@@ -6,7 +6,7 @@
 - **Diff range:** `a4ebe276816c373fc99457fa58756aa23966096e` → `HEAD`
 - **Base:** `a4ebe27` (2026-01-17) — `chore: bump version to 0.9.2 for npm publish`
 - **Head:** current `refactor` tip (changes as new commits land)
-- **Tests:** `npm test` ✅ (Vitest) — 30 files / 281 tests passed (local run 2026-01-30)
+- **Tests:** `npm test` ✅ (Vitest) — 35 files / 299 tests passed (local run 2026-01-30)
 
 ## Why This Refactor Exists
 
@@ -133,7 +133,7 @@ This refactor is not “just moving code around” because it introduces new abs
 
 Test inventory (current branch):
 
-- Unit test files: 25 (`test/unit/*`)
+- Unit test files: 30 (`test/unit/*`)
 - Integration test files: 3 (`test/integration/*`)
 - E2E test files: 1 (`test/e2e.test.js`)
 
@@ -150,7 +150,7 @@ The totals below distinguish “production code” from tests/docs so the number
 
 ### Tests (excluded from production totals)
 
-- Tests: **+1523 / -2** (net **+1521**)
+- Tests: **+1702 / -2** (net **+1700**)
 
 ### Backend / Server Refactor Files
 
@@ -183,26 +183,63 @@ The totals below distinguish “production code” from tests/docs so the number
 | A | `server/services/TargetService.js` | 78 | 0 | +78 |
 | A | `server/services/WorkService.js` | 158 | 0 | +158 |
 
+### Frontend / UI Refactor Files
+
+| Status | File | + | - | Net |
+|---|---|---:|---:|---:|
+| M | `js/app.js` | 19 | 13 | +6 |
+| M | `js/components/activity-feed.js` | 3 | 44 | -41 |
+| M | `js/components/agent-grid.js` | 5 | 19 | -14 |
+| M | `js/components/autocomplete.js` | 3 | 9 | -6 |
+| M | `js/components/convoy-list.js` | 6 | 19 | -13 |
+| M | `js/components/crew-list.js` | 2 | 1 | +1 |
+| M | `js/components/dashboard.js` | 3 | 26 | -23 |
+| M | `js/components/formula-list.js` | 3 | 11 | -8 |
+| M | `js/components/health-check.js` | 3 | 2 | +1 |
+| M | `js/components/issue-list.js` | 3 | 11 | -8 |
+| M | `js/components/mail-list.js` | 4 | 2 | +2 |
+| M | `js/components/modals.js` | 34 | 51 | -17 |
+| M | `js/components/pr-list.js` | 1 | 8 | -7 |
+| M | `js/components/rig-list.js` | 2 | 1 | +1 |
+| M | `js/components/sidebar.js` | 12 | 11 | +1 |
+| M | `js/components/toast.js` | 4 | 10 | -6 |
+| M | `js/components/work-list.js` | 13 | 120 | -107 |
+| M | `js/shared/agent-types.js` | 2 | 10 | -8 |
+| A | `js/shared/animations.js` | 16 | 0 | +16 |
+| A | `js/shared/beads.js` | 17 | 0 | +17 |
+| A | `js/shared/close-reason.js` | 46 | 0 | +46 |
+| A | `js/shared/github-repos.js` | 46 | 0 | +46 |
+| A | `js/shared/timing.js` | 12 | 0 | +12 |
+| M | `js/utils/formatting.js` | 74 | 13 | +61 |
+| M | `js/utils/html.js` | 34 | 21 | +13 |
+| M | `js/utils/performance.js` | 5 | 2 | +3 |
+| M | `js/utils/tooltip.js` | 21 | 24 | -3 |
+
 ### Tests
 
 | Status | File | + | - | Net |
 |---|---|---:|---:|---:|
 | M | `test/mock-server.js` | 2 | 2 | +0 |
 | A | `test/unit/agentPath.test.js` | 22 | 0 | +22 |
+| A | `test/unit/animationsShared.test.js` | 26 | 0 | +26 |
 | A | `test/unit/bdGateway.test.js` | 89 | 0 | +89 |
 | A | `test/unit/beadRoutes.test.js` | 79 | 0 | +79 |
 | A | `test/unit/beadService.test.js` | 72 | 0 | +72 |
+| A | `test/unit/beadsShared.test.js` | 20 | 0 | +20 |
 | A | `test/unit/cacheRegistry.test.js` | 54 | 0 | +54 |
 | A | `test/unit/commandRunner.test.js` | 48 | 0 | +48 |
 | A | `test/unit/convoyRoutes.test.js` | 73 | 0 | +73 |
 | A | `test/unit/convoyService.test.js` | 54 | 0 | +54 |
 | A | `test/unit/eventBus.test.js` | 42 | 0 | +42 |
+| A | `test/unit/formattingTime.test.js` | 61 | 0 | +61 |
 | A | `test/unit/formulaRoutes.test.js` | 101 | 0 | +101 |
 | A | `test/unit/gitGateway.test.js` | 34 | 0 | +34 |
 | A | `test/unit/githubGateway.test.js` | 58 | 0 | +58 |
+| A | `test/unit/githubRepos.test.js` | 39 | 0 | +39 |
 | A | `test/unit/githubRoutes.test.js` | 75 | 0 | +75 |
 | A | `test/unit/githubService.test.js` | 82 | 0 | +82 |
 | A | `test/unit/gtGateway.test.js` | 104 | 0 | +104 |
+| A | `test/unit/htmlUtils.test.js` | 33 | 0 | +33 |
 | A | `test/unit/safeSegment.test.js` | 22 | 0 | +22 |
 | A | `test/unit/statusRoutes.test.js` | 52 | 0 | +52 |
 | A | `test/unit/statusService.test.js` | 119 | 0 | +119 |
@@ -217,7 +254,7 @@ The totals below distinguish “production code” from tests/docs so the number
 | Status | File | + | - | Net |
 |---|---|---:|---:|---:|
 | A | `AGENT_HANDOFF.md` | 177 | 0 | +177 |
-| M | `CLAUDE.md` | 68 | 12 | +56 |
+| M | `CLAUDE.md` | 74 | 13 | +61 |
 | A | `ai-memory/refactor-a4ebe27/init.md` | 36 | 0 | +36 |
 | A | `ai-memory/refactor-a4ebe27/plan.md` | 43 | 0 | +43 |
 | A | `ai-memory/refactor-a4ebe27/progress.md` | 92 | 0 | +92 |
