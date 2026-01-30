@@ -32,6 +32,8 @@
   - `/api/status` → `server/services/StatusService.js` + `server/routes/status.js`
   - `/api/targets` → `server/services/TargetService.js` + `server/routes/targets.js`
   - `/api/convoys`, `/api/convoy/:id`, `POST /api/convoy` → `server/services/ConvoyService.js` + `server/routes/convoys.js`
+  - `/api/sling`, `/api/escalate`, `/api/work/*` → `server/services/WorkService.js` + `server/routes/work.js`
+  - `/api/beads`, `/api/beads/search`, `/api/bead/:beadId` → `server/services/BeadService.js` + `server/routes/beads.js`
   - `/api/github/*` → `server/services/GitHubService.js` + `server/routes/github.js` (backed by `server/gateways/GitHubGateway.js`)
   - `/api/formula/*` → `server/services/FormulaService.js` + `server/routes/formulas.js` (fixes update/delete runtime bugs)
 
@@ -82,8 +84,8 @@ gh pr create --title "refactor: comprehensive codebase analysis with PoEAA patte
    - Next: expand where strings represent domain identifiers (session names, rig names, bead IDs)
 
 3. **Service Layer** ✅ (in progress)
-   - Services exist: `FormulaService`, `StatusService`, `TargetService`, `ConvoyService`, `GitHubService`
-   - Next services (high leverage): `WorkService` (sling), `MailService`, `BeadService`, `PolecatService`, `DoctorService`, `RigService`, `CrewService`
+   - Services exist: `FormulaService`, `StatusService`, `TargetService`, `ConvoyService`, `GitHubService`, `BeadService`, `WorkService`
+   - Next services (high leverage): `MailService`, `PolecatService`, `DoctorService`, `RigService`, `CrewService`, `ActivityStreamService`
 
 4. **Frontend: Form Handler Utility**
    - Create `js/utils/form-handler.js`
@@ -140,10 +142,12 @@ It's not just impressive - it's the **correct** solution.
 Branch: refactor
 Remote: origin/refactor (pushed)
 Commits:
-  580c62e - initialize memory structure
-  14ad704 - comprehensive analysis
-  99c747a - rankings document
-  b7f150e - process documentation
+  87748ab - migrate beads/work/sling/escalate routes to services
+  75b2b99 - add BeadService/WorkService and route modules
+  2cc97b8 - add GTGateway.escalate
+  99a0bf2 - add BDGateway.create
+  34f9e31 - bind mock server to localhost
+  96adc75 - update handoff and implementation plan
 ```
 
 ---

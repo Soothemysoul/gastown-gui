@@ -23,10 +23,11 @@ Completed:
   - Status/targets (`StatusService`/`TargetService` + route modules)
   - GitHub (`GitHubService` + `routes/github.js`)
   - Convoys (`ConvoyService` + `routes/convoys.js`)
+  - Beads + work workflow (`BeadService`/`WorkService` + `routes/beads.js`/`routes/work.js`)
 - Backend tests that run a real Express app with stubbed dependencies (no CLI tools required)
 
 Still pending (highest leverage next):
-- Migrate remaining “core workflow” endpoints (`/api/sling`, beads/work/mail/polecat/doctor/rigs/crews)
+- Migrate remaining “core workflow” endpoints (mail, polecat, doctor, rigs/crews, and bead links `/api/bead/:beadId/links`)
 - Remove or retire legacy helpers (`executeGT`, scattered `execFileAsync(...)`) as coverage increases
 - Extract WebSocket activity stream into `ActivityStreamService` and make start/stop behavior testable
 
