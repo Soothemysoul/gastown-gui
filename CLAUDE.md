@@ -7,9 +7,9 @@ Web GUI for [steveyegge/gastown](https://github.com/steveyegge/gastown) multi-ag
 ## Commands
 
 ```bash
-npm start          # Start server (port 4000)
+npm start          # Start server
 npm run dev        # Dev mode with auto-reload
-npm test           # Run all tests (231 tests)
+npm test           # Run all tests
 npm run test:unit  # Unit tests only
 npm run test:e2e   # E2E tests only
 ```
@@ -18,7 +18,7 @@ npm run test:e2e   # E2E tests only
 
 ```
 gastown-gui/
-├── server.js              # Express server + 61 API endpoints wrapping gt CLI
+├── server.js              # Express server + API endpoints wrapping gt CLI
 ├── server/                # Backend modules (in progress)
 │   ├── infrastructure/
 │   │   ├── CacheRegistry.js
@@ -26,6 +26,7 @@ gastown-gui/
 │   │   └── EventBus.js
 │   └── gateways/
 │       ├── BDGateway.js
+│       ├── GitHubGateway.js
 │       ├── GTGateway.js
 │       └── TmuxGateway.js
 ├── index.html             # Main HTML entry point
@@ -73,21 +74,22 @@ gastown-gui/
 │   ├── setup.js           # Test environment setup
 │   ├── globalSetup.js     # Vitest global setup
 │   ├── mock-server.js     # Mock gt CLI responses
-│   ├── e2e.test.js        # Puppeteer browser tests (24)
+│   ├── e2e.test.js        # Puppeteer browser tests
 │   ├── integration.test.js # Legacy integration tests
 │   ├── unit/
-│   │   ├── state.test.js      # State management tests (29)
-│   │   ├── cacheRegistry.test.js # CacheRegistry tests (4)
-│   │   ├── commandRunner.test.js  # CommandRunner tests (5)
-│   │   ├── eventBus.test.js       # EventBus tests (3)
-│   │   ├── gtGateway.test.js      # GTGateway tests (5)
-│   │   ├── bdGateway.test.js      # BDGateway tests (4)
-│   │   ├── tmuxGateway.test.js    # TmuxGateway tests (4)
-│   │   └── quoteArg.test.js   # Shell injection security tests (24)
+│   │   ├── state.test.js      # State management tests
+│   │   ├── cacheRegistry.test.js # CacheRegistry tests
+│   │   ├── commandRunner.test.js  # CommandRunner tests
+│   │   ├── eventBus.test.js       # EventBus tests
+│   │   ├── gtGateway.test.js      # GTGateway tests
+│   │   ├── bdGateway.test.js      # BDGateway tests
+│   │   ├── tmuxGateway.test.js    # TmuxGateway tests
+│   │   ├── githubGateway.test.js  # GitHubGateway tests
+│   │   └── quoteArg.test.js   # Shell injection security tests
 │   └── integration/
-│       ├── endpoints.test.js  # API endpoint tests (78)
-│       ├── websocket.test.js  # WebSocket lifecycle tests (9)
-│       └── cache.test.js      # Cache invalidation tests (10)
+│       ├── endpoints.test.js  # API endpoint tests
+│       ├── websocket.test.js  # WebSocket lifecycle tests
+│       └── cache.test.js      # Cache invalidation tests
 ├── vitest.config.js       # Main test config
 └── vitest.unit.config.js  # Unit-only test config
 ```
@@ -133,6 +135,6 @@ gastown-gui/
 
 ## Testing
 
-- **231 tests** total (unit: 78, integration: 129, e2e: 24)
-- **61 API endpoints** - contract tested via `test/mock-server.js` (real server route coverage in progress)
+- Tests cover unit, integration, and e2e layers
+- API endpoints are contract tested via `test/mock-server.js` (real server route coverage in progress)
 - CI runs on Node 18, 20, 22
