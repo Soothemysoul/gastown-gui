@@ -24,6 +24,17 @@ import { showToast } from './components/toast.js';
 import { initModals } from './components/modals.js';
 import { startTutorial, shouldShowTutorial } from './components/tutorial.js';
 import { startOnboarding, shouldShowOnboarding, resetOnboarding } from './components/onboarding.js';
+import {
+  CREW_REFRESH,
+  DASHBOARD_REFRESH,
+  MAIL_DETAIL,
+  MAIL_REFRESH,
+  ONBOARDING_COMPLETE,
+  POLECAT_ACTION,
+  RIGS_REFRESH,
+  STATUS_REFRESH,
+  WORK_REFRESH,
+} from './shared/events.js';
 
 const ONBOARDING_START_DELAY_MS = 500;
 const TUTORIAL_START_DELAY_MS = 1000;
@@ -141,43 +152,43 @@ async function init() {
   }
 
   // Listen for onboarding completion
-  document.addEventListener('onboarding:complete', () => {
+  document.addEventListener(ONBOARDING_COMPLETE, () => {
     loadInitialData();
   });
 
   // Listen for status refresh (from service controls)
-  document.addEventListener('status:refresh', () => {
+  document.addEventListener(STATUS_REFRESH, () => {
     loadInitialData();
   });
 
   // Listen for dashboard refresh
-  document.addEventListener('dashboard:refresh', () => {
+  document.addEventListener(DASHBOARD_REFRESH, () => {
     loadDashboard();
   });
 
   // Listen for rigs refresh (from agent controls)
-  document.addEventListener('rigs:refresh', () => {
+  document.addEventListener(RIGS_REFRESH, () => {
     loadRigs();
   });
 
   // Listen for work refresh (from work actions)
-  document.addEventListener('work:refresh', () => {
+  document.addEventListener(WORK_REFRESH, () => {
     loadWork();
   });
 
   // Listen for mail refresh (from read/unread actions)
-  document.addEventListener('mail:refresh', () => {
+  document.addEventListener(MAIL_REFRESH, () => {
     loadMail();
   });
 
   // Handle mail detail modal
-  document.addEventListener('mail:detail', (e) => {
+  document.addEventListener(MAIL_DETAIL, (e) => {
     const { mailId, mail } = e.detail;
     showMailDetailModal(mail);
   });
 
   // Handle polecat start/stop/restart actions
-  document.addEventListener('polecat:action', async (e) => {
+  document.addEventListener(POLECAT_ACTION, async (e) => {
     const { rig, name, action, agentId } = e.detail;
     try {
       showToast(`${action === 'start' ? 'Starting' : action === 'stop' ? 'Stopping' : 'Restarting'} polecat...`, 'info');
@@ -194,7 +205,7 @@ async function init() {
       }
 
       // Refresh the agents list
-      document.dispatchEvent(new CustomEvent('status:refresh'));
+      document.dispatchEvent(new CustomEvent(STATUS_REFRESH));
     } catch (err) {
       console.error('Polecat action failed:', err);
       showToast(`Failed to ${action} polecat: ${err.message}`, 'error');
@@ -967,7 +978,7 @@ document.getElementById('crew-refresh')?.addEventListener('click', () => {
 });
 
 // Crew refresh event (triggered by crew-list.js after add/remove)
-document.addEventListener('crew:refresh', () => {
+document.addEventListener(CREW_REFRESH, () => {
   loadCrews();
 });
 

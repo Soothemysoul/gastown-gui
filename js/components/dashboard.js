@@ -9,6 +9,7 @@ import { api } from '../api.js';
 import { state } from '../state.js';
 import { showToast } from './toast.js';
 import { AGENT_TYPES, STATUS_COLORS, getAgentConfig } from '../shared/agent-types.js';
+import { BEAD_DETAIL, STATUS_UPDATED } from '../shared/events.js';
 import { escapeHtml } from '../utils/html.js';
 import { formatTimeAgoCompact } from '../utils/formatting.js';
 
@@ -108,7 +109,7 @@ export function initDashboard() {
   }
 
   // Listen for status updates
-  document.addEventListener('status:updated', loadDashboard);
+  document.addEventListener(STATUS_UPDATED, loadDashboard);
 }
 
 /**
@@ -574,7 +575,7 @@ function setupQuickActionHandlers() {
   container.querySelectorAll('.recent-work-item').forEach(item => {
     item.addEventListener('click', () => {
       const beadId = item.dataset.beadId;
-      document.dispatchEvent(new CustomEvent('bead:detail', { detail: { beadId, bead: { id: beadId } } }));
+      document.dispatchEvent(new CustomEvent(BEAD_DETAIL, { detail: { beadId, bead: { id: beadId } } }));
     });
   });
 
