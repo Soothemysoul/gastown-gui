@@ -8,6 +8,7 @@ import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { escapeHtml, truncate } from '../utils/html.js';
 import { formatTimeAgoOrDate } from '../utils/formatting.js';
+import { getBeadPriority } from '../shared/beads.js';
 import { getGitHubRepoForBead } from '../shared/github-repos.js';
 
 // Issue type icons
@@ -221,6 +222,7 @@ function renderBeadCard(bead, index) {
   const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.open;
   const typeIcon = TYPE_ICONS[bead.issue_type] || 'assignment';
   const assignee = bead.assignee ? bead.assignee.split('/').pop() : null;
+  const priority = getBeadPriority(bead);
 
   return `
     <div class="bead-card ${statusConfig.class} animate-spawn stagger-${Math.min(index, 6)}"
@@ -245,8 +247,8 @@ function renderBeadCard(bead, index) {
             ` : ''}
           </div>
         </div>
-        <div class="bead-priority priority-${bead.priority || 2}">
-          P${bead.priority || 2}
+        <div class="bead-priority priority-${priority}">
+          P${priority}
         </div>
       </div>
 

@@ -10,6 +10,7 @@ import { initAutocomplete, renderBeadItem, renderAgentItem } from './autocomplet
 import { state } from '../state.js';
 import { escapeHtml, escapeAttr, capitalize } from '../utils/html.js';
 import { debounce } from '../utils/performance.js';
+import { getBeadPriority } from '../shared/beads.js';
 import { getGitHubRepoForBead } from '../shared/github-repos.js';
 
 // Modal registry
@@ -1201,6 +1202,7 @@ function showBeadDetailModal(beadId, bead) {
   const closeReasonHtml = bead.close_reason
     ? parseCloseReasonForModal(bead.close_reason, beadId)
     : '';
+  const priority = getBeadPriority(bead);
 
   const content = `
     <div class="modal-header bead-detail-header">
@@ -1230,7 +1232,7 @@ function showBeadDetailModal(beadId, bead) {
         </div>
         <div class="meta-row">
           <span class="meta-label">Priority:</span>
-          <span class="priority-badge priority-${bead.priority || 2}">P${bead.priority || 2}</span>
+          <span class="priority-badge priority-${priority}">P${priority}</span>
         </div>
         <div class="meta-row">
           <span class="meta-label">Status:</span>
