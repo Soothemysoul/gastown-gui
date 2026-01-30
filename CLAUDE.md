@@ -126,7 +126,11 @@ gastown-gui/
 │       ├── websocket.test.js  # WebSocket lifecycle tests
 │       └── cache.test.js      # Cache invalidation tests
 ├── vitest.config.js       # Main test config
-└── vitest.unit.config.js  # Unit-only test config
+├── vitest.unit.config.js  # Unit-only test config
+├── refactoring-analysis/  # Refactor analysis + plans + reports
+│   └── trace/             # Sanitized prompt/trace exports (safe to share)
+└── scripts/
+    └── extract_user_prompts.mjs # Builds sanitized prompt log from local trace dirs
 ```
 
 ## Key Patterns
