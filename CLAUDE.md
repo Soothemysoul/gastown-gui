@@ -27,6 +27,7 @@ gastown-gui/
 │   └── gateways/
 │       ├── BDGateway.js
 │       ├── GitHubGateway.js
+│       ├── GitGateway.js
 │       ├── GTGateway.js
 │       └── TmuxGateway.js
 ├── index.html             # Main HTML entry point
@@ -85,6 +86,7 @@ gastown-gui/
 │   │   ├── bdGateway.test.js      # BDGateway tests
 │   │   ├── tmuxGateway.test.js    # TmuxGateway tests
 │   │   ├── githubGateway.test.js  # GitHubGateway tests
+│   │   ├── gitGateway.test.js     # GitGateway tests
 │   │   └── quoteArg.test.js   # Shell injection security tests
 │   └── integration/
 │       ├── endpoints.test.js  # API endpoint tests
