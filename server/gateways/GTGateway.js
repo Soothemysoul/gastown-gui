@@ -65,4 +65,14 @@ export class GTGateway {
     const raw = `${result.stdout || ''}${result.stderr || ''}`.trim();
     return { ...result, raw };
   }
+
+  async escalate({ topic, severity, message } = {}) {
+    if (!topic) throw new Error('GTGateway.escalate requires topic');
+    if (!message) throw new Error('GTGateway.escalate requires message');
+
+    const args = ['escalate', topic, '-s', severity || 'MEDIUM', '-m', message];
+    const result = await this.exec(args, { timeoutMs: 30000 });
+    const raw = `${result.stdout || ''}${result.stderr || ''}`.trim();
+    return { ...result, raw };
+  }
 }

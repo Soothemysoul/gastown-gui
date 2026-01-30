@@ -86,4 +86,19 @@ describe('GTGateway', () => {
     expect(runner.calls[0].args).toEqual(['sling', 'bd-1', 'mayor', '--molecule', 'foo', '--quality=high', '--args', '--bar']);
     expect(result.raw).toBe('okwarn');
   });
+
+  it('escalate() builds args and returns raw output', async () => {
+    const runner = new FakeRunner();
+    runner.queue({ ok: true, exitCode: 0, stdout: 'sent', stderr: '', error: null, signal: null });
+    const gateway = new GTGateway({ runner, gtRoot: '/tmp/gt' });
+
+    const result = await gateway.escalate({
+      topic: 'Convoy abc needs attention',
+      severity: 'HIGH',
+      message: 'Blocked',
+    });
+
+    expect(runner.calls[0].args).toEqual(['escalate', 'Convoy abc needs attention', '-s', 'HIGH', '-m', 'Blocked']);
+    expect(result.raw).toBe('sent');
+  });
 });
