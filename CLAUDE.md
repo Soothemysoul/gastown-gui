@@ -9,7 +9,7 @@ Web GUI for [steveyegge/gastown](https://github.com/steveyegge/gastown) multi-ag
 ```bash
 npm start          # Start server (port 4000)
 npm run dev        # Dev mode with auto-reload
-npm test           # Run all tests (223 tests)
+npm test           # Run all tests (227 tests)
 npm run test:unit  # Unit tests only
 npm run test:e2e   # E2E tests only
 ```
@@ -20,11 +20,12 @@ npm run test:e2e   # E2E tests only
 gastown-gui/
 ├── server.js              # Express server + 61 API endpoints wrapping gt CLI
 ├── server/                # Backend modules (in progress)
-│   └── infrastructure/
+│   ├── infrastructure/
 │       ├── CacheRegistry.js
 │       ├── CommandRunner.js
 │       └── EventBus.js
 │   └── gateways/
+│       ├── BDGateway.js
 │       └── GTGateway.js
 ├── index.html             # Main HTML entry point
 ├── package.json           # Dependencies & npm scripts
@@ -79,6 +80,7 @@ gastown-gui/
 │   │   ├── commandRunner.test.js  # CommandRunner tests (5)
 │   │   ├── eventBus.test.js       # EventBus tests (3)
 │   │   ├── gtGateway.test.js      # GTGateway tests (5)
+│   │   ├── bdGateway.test.js      # BDGateway tests (4)
 │   │   └── quoteArg.test.js   # Shell injection security tests (22)
 │   └── integration/
 │       ├── endpoints.test.js  # API endpoint tests (78)
@@ -129,6 +131,6 @@ gastown-gui/
 
 ## Testing
 
-- **223 tests** total (unit: 70, integration: 129, e2e: 24)
+- **227 tests** total (unit: 74, integration: 129, e2e: 24)
 - **61 API endpoints** - contract tested via `test/mock-server.js` (real server route coverage in progress)
 - CI runs on Node 18, 20, 22
