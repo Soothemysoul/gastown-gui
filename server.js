@@ -27,16 +27,20 @@ import { BDGateway } from './server/gateways/BDGateway.js';
 import { GTGateway } from './server/gateways/GTGateway.js';
 import { GitHubGateway } from './server/gateways/GitHubGateway.js';
 import { TmuxGateway } from './server/gateways/TmuxGateway.js';
+import { BeadService } from './server/services/BeadService.js';
 import { ConvoyService } from './server/services/ConvoyService.js';
 import { FormulaService } from './server/services/FormulaService.js';
 import { GitHubService } from './server/services/GitHubService.js';
 import { StatusService } from './server/services/StatusService.js';
 import { TargetService } from './server/services/TargetService.js';
+import { WorkService } from './server/services/WorkService.js';
+import { registerBeadRoutes } from './server/routes/beads.js';
 import { registerConvoyRoutes } from './server/routes/convoys.js';
 import { registerFormulaRoutes } from './server/routes/formulas.js';
 import { registerGitHubRoutes } from './server/routes/github.js';
 import { registerStatusRoutes } from './server/routes/status.js';
 import { registerTargetRoutes } from './server/routes/targets.js';
+import { registerWorkRoutes } from './server/routes/work.js';
 
 const execFileAsync = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
@@ -59,6 +63,15 @@ const convoyService = new ConvoyService({
 });
 const statusService = new StatusService({ gtGateway, tmuxGateway, cache: backendCache, gtRoot: GT_ROOT });
 const targetService = new TargetService({ statusService });
+const beadService = new BeadService({
+  bdGateway,
+  emit: (type, data) => broadcast({ type, data }),
+});
+const workService = new WorkService({
+  gtGateway,
+  bdGateway,
+  emit: (type, data) => broadcast({ type, data }),
+});
 const gitHubGateway = new GitHubGateway({ runner: commandRunner });
 const gitHubService = new GitHubService({ gitHubGateway, statusService, cache: backendCache });
 
@@ -440,115 +453,14 @@ registerStatusRoutes(app, { statusService });
 // List convoys
 registerConvoyRoutes(app, { convoyService });
 
-// Sling work
-app.post('/api/sling', async (req, res) => {
-  const { bead, target, molecule, quality, args: slingArgs } = req.body;
-  const cmdArgs = ['sling', bead];
+// Work dispatch, escalation, and bead/work actions
+registerWorkRoutes(app, { workService });
 
-  if (target) cmdArgs.push(target);
-  if (molecule) cmdArgs.push('--molecule', molecule);
-  if (quality) cmdArgs.push(`--quality=${quality}`);
-  if (slingArgs) cmdArgs.push('--args', slingArgs);
-
-  // Sling spawns a polecat which can take 60+ seconds
-  // Use ignoreStderr since sling has many non-fatal warnings
-  const result = await executeGT(cmdArgs, { timeout: 90000, ignoreStderr: true });
-
-  // Check for success indicators in output - sling can have warnings but still succeed
-  const output = result.data || result.error || '';
-  const workAttached = output.includes('Work attached to hook') || output.includes('✓ Work attached');
-  const promptSent = output.includes('Start prompt sent') || output.includes('▶ Start prompt sent');
-  const polecatSpawned = output.includes('Polecat') && output.includes('spawned');
-
-  // Consider success if work was attached or prompt was sent
-  const actualSuccess = result.success || workAttached || promptSent;
-
-  if (actualSuccess) {
-    const jsonData = parseJSON(result.data);
-    const responseData = {
-      bead,
-      target,
-      workAttached,
-      promptSent,
-      polecatSpawned,
-      raw: output
-    };
-    broadcast({ type: 'work_slung', data: jsonData || responseData });
-    res.json({ success: true, data: jsonData || responseData, raw: output });
-  } else {
-    // Check for common errors and provide helpful messages
-    const errorMsg = result.error || '';
-
-    // Formula not found error
-    const formulaMatch = errorMsg.match(/formula '([^']+)' not found/);
-    if (formulaMatch) {
-      const formulaName = formulaMatch[1];
-      return res.status(400).json({
-        error: `Formula '${formulaName}' not found`,
-        errorType: 'formula_missing',
-        formula: formulaName,
-        hint: `Create the formula at ~/.beads/formulas/${formulaName}.toml or try a different quality level`,
-        fix: {
-          action: 'create_formula',
-          formula: formulaName,
-          command: `mkdir -p ~/.beads/formulas && cat > ~/.beads/formulas/${formulaName}.toml`
-        }
-      });
-    }
-
-    // Bead not found error
-    if (errorMsg.includes('bead') && errorMsg.includes('not found')) {
-      return res.status(400).json({
-        error: 'Bead not found',
-        errorType: 'bead_missing',
-        hint: 'The issue/bead ID does not exist. Check the ID or create a new bead.',
-        fix: {
-          action: 'search_beads',
-          command: 'bd list'
-        }
-      });
-    }
-
-    res.status(500).json({ error: errorMsg || 'Sling failed - no work attached' });
-  }
-});
+// Beads
+registerBeadRoutes(app, { beadService });
 
 // Get available sling targets
 registerTargetRoutes(app, { targetService });
-
-// Escalate issue to human overseer
-app.post('/api/escalate', async (req, res) => {
-  // UI sends: convoy_id, reason, priority
-  // gt escalate expects: <topic> -s <severity> -m <message>
-  const { convoy_id, reason, priority } = req.body;
-
-  if (!reason) {
-    return res.status(400).json({ error: 'Reason is required' });
-  }
-
-  // Map priority to severity: normal→MEDIUM, high→HIGH, critical→CRITICAL
-  const severityMap = {
-    normal: 'MEDIUM',
-    high: 'HIGH',
-    critical: 'CRITICAL'
-  };
-  const severity = severityMap[priority] || 'MEDIUM';
-
-  // Build topic from convoy context
-  const topic = convoy_id
-    ? `Convoy ${convoy_id.slice(0, 8)} needs attention`
-    : 'Issue needs attention';
-
-  const args = ['escalate', topic, '-s', severity, '-m', reason];
-
-  const result = await executeGT(args);
-  if (result.success) {
-    broadcast({ type: 'escalation', data: { convoy_id, reason, priority, severity } });
-    res.json({ success: true, data: result.data });
-  } else {
-    res.status(500).json({ error: result.error });
-  }
-});
 
 // Get mail inbox
 app.get('/api/mail', async (req, res) => {
@@ -751,193 +663,6 @@ app.post('/api/nudge', async (req, res) => {
 app.get('/api/mayor/messages', (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 50, MAX_MESSAGE_HISTORY);
   res.json(mayorMessageHistory.slice(0, limit));
-});
-
-// ============= Beads API =============
-
-// Create a new bead (issue)
-app.post('/api/beads', async (req, res) => {
-  const { title, description, priority, labels } = req.body;
-
-  if (!title) {
-    return res.status(400).json({ error: 'Title is required' });
-  }
-
-  // Map word priorities to bd's P0-P4 format
-  const priorityMap = {
-    'urgent': 'P0',      // Urgent/Critical = highest priority
-    'critical': 'P0',
-    'high': 'P1',
-    'normal': 'P2',
-    'low': 'P3',
-    'backlog': 'P4',
-  };
-
-  // Build bd new command
-  // bd new "title" --description "..." --priority P1 --label bug --label enhancement
-  // Use --no-daemon to avoid timeout issues
-  const args = ['--no-daemon', 'new', title];
-
-  if (description) {
-    args.push('--description', description);
-  }
-  if (priority && priority !== 'normal') {
-    const mappedPriority = priorityMap[priority] || priority;
-    args.push('--priority', mappedPriority);
-  }
-  if (labels && Array.isArray(labels) && labels.length > 0) {
-    labels.forEach(label => {
-      args.push('--label', label);
-    });
-  }
-
-  const result = await executeBD(args);
-
-  if (result.success) {
-    // Parse the bead ID from output (format: "Created bead: gt-abc123")
-    const match = result.data.match(/(?:Created|created)\s*(?:bead|issue)?:?\s*(\S+)/i);
-    const beadId = match ? match[1] : result.data.trim();
-
-    broadcast({ type: 'bead_created', data: { bead_id: beadId, title } });
-    res.json({ success: true, bead_id: beadId, raw: result.data });
-  } else {
-    res.status(500).json({ success: false, error: result.error });
-  }
-});
-
-// Search beads
-app.get('/api/beads/search', async (req, res) => {
-  const query = req.query.q || '';
-
-  // bd search "query" or bd list if no query
-  // Use --no-daemon to avoid timeout issues
-  const args = query ? ['--no-daemon', 'search', query] : ['--no-daemon', 'list'];
-  args.push('--json');
-
-  const result = await executeBD(args);
-
-  if (result.success) {
-    const data = parseJSON(result.data);
-    res.json(data || []);
-  } else {
-    // Return empty array on error (may just be no results)
-    res.json([]);
-  }
-});
-
-// List all beads
-app.get('/api/beads', async (req, res) => {
-  const status = req.query.status;
-  // Use --no-daemon to avoid timeout issues
-  const args = ['--no-daemon', 'list'];
-  if (status) args.push(`--status=${status}`);
-  args.push('--json');
-
-  const result = await executeBD(args);
-
-  if (result.success) {
-    const data = parseJSON(result.data);
-    res.json(data || []);
-  } else {
-    res.json([]);
-  }
-});
-
-// ============= Work Actions =============
-
-// Mark work as done
-app.post('/api/work/:beadId/done', async (req, res) => {
-  const { beadId } = req.params;
-  const { summary } = req.body;
-
-  console.log(`[Work] Marking ${beadId} as done...`);
-
-  const args = ['done', beadId];
-  if (summary) {
-    args.push('-m', summary);
-  }
-
-  const result = await executeBD(args);
-
-  if (result.success) {
-    broadcast({ type: 'work_done', data: { beadId, summary } });
-    res.json({ success: true, beadId, message: `${beadId} marked as done`, raw: result.data });
-  } else {
-    res.status(500).json({ success: false, error: result.error });
-  }
-});
-
-// Park work (temporarily set aside)
-app.post('/api/work/:beadId/park', async (req, res) => {
-  const { beadId } = req.params;
-  const { reason } = req.body;
-
-  console.log(`[Work] Parking ${beadId}...`);
-
-  const args = ['park', beadId];
-  if (reason) {
-    args.push('-m', reason);
-  }
-
-  const result = await executeBD(args);
-
-  if (result.success) {
-    broadcast({ type: 'work_parked', data: { beadId, reason } });
-    res.json({ success: true, beadId, message: `${beadId} parked`, raw: result.data });
-  } else {
-    res.status(500).json({ success: false, error: result.error });
-  }
-});
-
-// Release work (unassign from agent)
-app.post('/api/work/:beadId/release', async (req, res) => {
-  const { beadId } = req.params;
-
-  console.log(`[Work] Releasing ${beadId}...`);
-
-  const result = await executeBD(['release', beadId]);
-
-  if (result.success) {
-    broadcast({ type: 'work_released', data: { beadId } });
-    res.json({ success: true, beadId, message: `${beadId} released`, raw: result.data });
-  } else {
-    res.status(500).json({ success: false, error: result.error });
-  }
-});
-
-// Reassign work to a different agent
-app.post('/api/work/:beadId/reassign', async (req, res) => {
-  const { beadId } = req.params;
-  const { target } = req.body;
-
-  if (!target) {
-    return res.status(400).json({ error: 'Target is required' });
-  }
-
-  console.log(`[Work] Reassigning ${beadId} to ${target}...`);
-
-  const result = await executeBD(['reassign', beadId, target]);
-
-  if (result.success) {
-    broadcast({ type: 'work_reassigned', data: { beadId, target } });
-    res.json({ success: true, beadId, target, message: `${beadId} reassigned to ${target}`, raw: result.data });
-  } else {
-    res.status(500).json({ success: false, error: result.error });
-  }
-});
-
-// Get bead details
-app.get('/api/bead/:beadId', async (req, res) => {
-  const { beadId } = req.params;
-
-  const result = await executeBD(['show', beadId, '--json']);
-
-  if (result.success) {
-    const data = parseJSON(result.data);
-    res.json(data || { id: beadId });
-  } else {
-    res.status(404).json({ error: 'Bead not found' });
-  }
 });
 
 // Get related PRs/commits for a bead

@@ -31,17 +31,21 @@ gastown-gui/
 │   │   ├── CommandRunner.js
 │   │   └── EventBus.js
 │   ├── routes/
+│   │   ├── beads.js
 │   │   ├── formulas.js
 │   │   ├── convoys.js
 │   │   ├── github.js
 │   │   ├── status.js
-│   │   └── targets.js
+│   │   ├── targets.js
+│   │   └── work.js
 │   ├── services/
+│   │   ├── BeadService.js
 │   │   ├── ConvoyService.js
 │   │   ├── FormulaService.js
 │   │   ├── GitHubService.js
 │   │   ├── StatusService.js
-│   │   └── TargetService.js
+│   │   ├── TargetService.js
+│   │   └── WorkService.js
 │   └── gateways/
 │       ├── BDGateway.js
 │       ├── GitHubGateway.js
