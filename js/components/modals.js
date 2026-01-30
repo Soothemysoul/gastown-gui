@@ -11,7 +11,7 @@ import { state } from '../state.js';
 import { escapeHtml, escapeAttr, capitalize } from '../utils/html.js';
 import { debounce } from '../utils/performance.js';
 import { getBeadPriority } from '../shared/beads.js';
-import { getGitHubRepoForBead } from '../shared/github-repos.js';
+import { parseCloseReason } from '../shared/close-reason.js';
 import { TIMING_MS } from '../shared/timing.js';
 
 // Modal registry
@@ -1411,35 +1411,39 @@ async function fetchBeadLinks(beadId, modal) {
 function parseCloseReasonForModal(text, beadId) {
   if (!text) return '';
 
-  let result = escapeHtml(text);
-  const repo = getGitHubRepoForBead(beadId);
+  let result = parseCloseReason(text, beadId);
 
-  // Replace commit references with styled links
-  result = result.replace(/commit\s+([a-f0-9]{7,40})/gi, (match, hash) => {
-    if (repo) {
-      const url = `https://github.com/${repo}/commit/${hash}`;
-      return `<a href="${url}" target="_blank" class="commit-link code-link" data-commit="${hash}" title="View on GitHub">
-        <span class="material-icons">commit</span>${hash.substring(0, 7)}
-      </a>`;
-    } else {
+  // Upgrade commit links to modal-specific styling (icon + short hash)
+  result = result.replace(/<a\b[^>]*\bdata-commit="([^"]+)"[^>]*>.*?<\/a>/gi, (match, hash) => {
+    const href = match.match(/href="([^"]+)"/i)?.[1] ?? '#';
+    const shortHash = String(hash).substring(0, 7);
+    const isCopy = href === '#' || /\bcommit-copy\b/i.test(match);
+
+    if (isCopy) {
       return `<a href="#" class="commit-copy code-link" data-commit="${hash}" title="Click to copy">
-        <span class="material-icons">commit</span>${hash.substring(0, 7)}
+        <span class="material-icons">commit</span>${shortHash}
       </a>`;
     }
+
+    return `<a href="${href}" target="_blank" class="commit-link code-link" data-commit="${hash}" title="View on GitHub">
+        <span class="material-icons">commit</span>${shortHash}
+      </a>`;
   });
 
-  // Replace PR references
-  result = result.replace(/PR\s*#?(\d+)/gi, (match, num) => {
-    if (repo) {
-      const url = `https://github.com/${repo}/pull/${num}`;
-      return `<a href="${url}" target="_blank" class="pr-link code-link" data-pr="${num}" title="View on GitHub">
-        <span class="material-icons">merge</span>PR #${num}
-      </a>`;
-    } else {
+  // Upgrade PR links to modal-specific styling (icon)
+  result = result.replace(/<a\b[^>]*\bdata-pr="([^"]+)"[^>]*>.*?<\/a>/gi, (match, num) => {
+    const href = match.match(/href="([^"]+)"/i)?.[1] ?? '#';
+    const isCopy = href === '#' || /\bpr-copy\b/i.test(match);
+
+    if (isCopy) {
       return `<a href="#" class="pr-copy code-link" data-pr="${num}" title="Click to copy">
         <span class="material-icons">merge</span>PR #${num}
       </a>`;
     }
+
+    return `<a href="${href}" target="_blank" class="pr-link code-link" data-pr="${num}" title="View on GitHub">
+        <span class="material-icons">merge</span>PR #${num}
+      </a>`;
   });
 
   // Replace file paths (→ filename.ext pattern)
