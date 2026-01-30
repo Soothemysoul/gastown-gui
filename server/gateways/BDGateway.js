@@ -42,6 +42,25 @@ export class BDGateway {
     return { ...result, raw, data: parseJsonOrNull(raw) };
   }
 
+  async create({ title, description, priority, labels } = {}) {
+    const args = ['--no-daemon', 'new', title];
+    if (description) args.push('--description', description);
+    if (priority) args.push('--priority', priority);
+    if (Array.isArray(labels)) {
+      labels.forEach((label) => {
+        args.push('--label', label);
+      });
+    }
+
+    const result = await this.exec(args, { timeoutMs: 30000 });
+    const raw = (result.stdout || '').trim();
+
+    const match = raw.match(/(?:Created|created)\s*(?:bead|issue)?:?\s*(\S+)/i);
+    const beadId = match ? match[1] : raw || null;
+
+    return { ...result, raw, beadId };
+  }
+
   async show(beadId) {
     const result = await this.exec(['show', beadId, '--json'], { timeoutMs: 30000 });
     const raw = (result.stdout || '').trim();
@@ -72,4 +91,3 @@ export class BDGateway {
     return { ...result, raw: (result.stdout || '').trim() };
   }
 }
-

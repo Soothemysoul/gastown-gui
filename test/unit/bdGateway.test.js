@@ -50,6 +50,34 @@ describe('BDGateway', () => {
     expect(runner.calls[0].args).toEqual(['--no-daemon', 'list', '--json']);
   });
 
+  it('create() builds args and extracts beadId', async () => {
+    const runner = new FakeRunner();
+    runner.queue({ ok: true, exitCode: 0, stdout: 'Created bead: gt-abc123\n', stderr: '', error: null, signal: null });
+    const gateway = new BDGateway({ runner, gtRoot: '/tmp/gt' });
+
+    const result = await gateway.create({
+      title: 'Fix login bug',
+      description: 'Steps to repro…',
+      priority: 'P1',
+      labels: ['bug', 'ui'],
+    });
+
+    expect(runner.calls[0].args).toEqual([
+      '--no-daemon',
+      'new',
+      'Fix login bug',
+      '--description',
+      'Steps to repro…',
+      '--priority',
+      'P1',
+      '--label',
+      'bug',
+      '--label',
+      'ui',
+    ]);
+    expect(result.beadId).toBe('gt-abc123');
+  });
+
   it('markDone() adds -m when summary provided', async () => {
     const runner = new FakeRunner();
     runner.queue({ ok: true, exitCode: 0, stdout: 'done', stderr: '', error: null, signal: null });
@@ -59,4 +87,3 @@ describe('BDGateway', () => {
     expect(runner.calls[0].args).toEqual(['done', 'bd-1', '-m', 'ok']);
   });
 });
-
