@@ -79,16 +79,6 @@ export function capitalize(str) {
 }
 
 /**
- * Format a number with commas
- * @param {number} num - Number to format
- * @returns {string} - Formatted number string
- */
-export function formatNumber(num) {
-  if (num === null || num === undefined) return '0';
-  return num.toLocaleString();
-}
-
-/**
  * Wrap an async operation with button loading state
  * Shows spinner while operation runs, restores original content when done.
  * @param {HTMLButtonElement} btn - Button element

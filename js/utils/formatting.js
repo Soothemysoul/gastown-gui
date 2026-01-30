@@ -123,12 +123,3 @@ export function formatNumber(num) {
   if (typeof num !== 'number') return '0';
   return num.toLocaleString();
 }
-
-/**
- * Truncate text with ellipsis
- */
-export function truncate(str, maxLength = 50) {
-  if (!str) return '';
-  if (str.length <= maxLength) return str;
-  return str.substring(0, maxLength - 3) + '...';
-}
