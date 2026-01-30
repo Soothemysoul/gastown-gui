@@ -1,0 +1,69 @@
+function parseJsonOrNull(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+export class GTGateway {
+  constructor({ runner, gtRoot }) {
+    if (!runner?.exec) throw new Error('GTGateway requires a runner with exec()');
+    if (!gtRoot) throw new Error('GTGateway requires gtRoot');
+    this._runner = runner;
+    this._gtRoot = gtRoot;
+  }
+
+  async exec(args, options = {}) {
+    return this._runner.exec('gt', args, { cwd: this._gtRoot, ...options });
+  }
+
+  async status({ fast = true } = {}) {
+    const args = ['status', '--json'];
+    if (fast) args.push('--fast');
+    const result = await this.exec(args, { timeoutMs: 30000 });
+    const raw = (result.stdout || '').trim();
+    return { ...result, raw, data: parseJsonOrNull(raw) };
+  }
+
+  async listConvoys({ all = false, status } = {}) {
+    const args = ['convoy', 'list', '--json'];
+    if (all) args.push('--all');
+    if (status) args.push(`--status=${status}`);
+    const result = await this.exec(args, { timeoutMs: 30000 });
+    const raw = (result.stdout || '').trim();
+    return { ...result, raw, data: parseJsonOrNull(raw) };
+  }
+
+  async convoyStatus(convoyId) {
+    const result = await this.exec(['convoy', 'status', convoyId, '--json'], { timeoutMs: 30000 });
+    const raw = (result.stdout || '').trim();
+    return { ...result, raw, data: parseJsonOrNull(raw) };
+  }
+
+  async createConvoy({ name, issues = [], notify } = {}) {
+    const args = ['convoy', 'create', name, ...(issues || [])];
+    if (notify) args.push('--notify', notify);
+
+    const result = await this.exec(args, { timeoutMs: 30000 });
+    const raw = (result.stdout || '').trim();
+
+    const match = raw.match(/(?:Created|created)\s*(?:convoy)?:?\s*(\S+)/i);
+    const convoyId = match ? match[1] : null;
+
+    return { ...result, raw, convoyId };
+  }
+
+  async sling({ bead, target, molecule, quality, args: slingArgs } = {}) {
+    const cmdArgs = ['sling', bead];
+    if (target) cmdArgs.push(target);
+    if (molecule) cmdArgs.push('--molecule', molecule);
+    if (quality) cmdArgs.push(`--quality=${quality}`);
+    if (slingArgs) cmdArgs.push('--args', slingArgs);
+
+    const result = await this.exec(cmdArgs, { timeoutMs: 90000 });
+    const raw = `${result.stdout || ''}${result.stderr || ''}`.trim();
+    return { ...result, raw };
+  }
+}
+
