@@ -861,8 +861,8 @@ console.log(`[Mock Server] PORT configured as: ${PORT}`);
 export function startMockServer() {
   return new Promise((resolve) => {
     console.log(`[Mock Server] Starting on port ${PORT}...`);
-    server.listen(PORT, () => {
-      console.log(`[Mock Server] Running on http://localhost:${PORT}`);
+    server.listen(PORT, '127.0.0.1', () => {
+      console.log(`[Mock Server] Running on http://127.0.0.1:${PORT}`);
       startActivitySimulation();
       resolve(server);
     });
