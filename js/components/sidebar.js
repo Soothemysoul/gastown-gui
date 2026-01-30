@@ -8,6 +8,7 @@ import { AGENT_TYPES, STATUS_ICONS, getAgentType, getAgentConfig, formatAgentNam
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { escapeHtml, escapeAttr, truncate, capitalize } from '../utils/html.js';
+import { STATUS_REFRESH } from '../shared/events.js';
 import { TIMING_MS } from '../shared/timing.js';
 
 // Simple pluralization for agent type labels
@@ -295,7 +296,7 @@ async function handleServiceAction(action, service, btn) {
     if (result.success) {
       showToast(`${capitalize(service)} ${action}ed successfully`, 'success');
       // Trigger status refresh
-      document.dispatchEvent(new CustomEvent('status:refresh'));
+      document.dispatchEvent(new CustomEvent(STATUS_REFRESH));
     } else {
       showToast(`Failed to ${action} ${service}: ${result.error}`, 'error');
     }

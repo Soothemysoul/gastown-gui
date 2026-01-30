@@ -8,6 +8,7 @@
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { openModal } from './modals.js';
+import { ONBOARDING_COMPLETE } from '../shared/events.js';
 
 // Onboarding steps - each step has validation and action
 const ONBOARDING_STEPS = [
@@ -677,7 +678,7 @@ function completeOnboarding() {
   showToast('Setup complete! Welcome to Gas Town.', 'success');
 
   // Refresh the main view
-  document.dispatchEvent(new CustomEvent('onboarding:complete'));
+  document.dispatchEvent(new CustomEvent(ONBOARDING_COMPLETE));
 }
 
 /**

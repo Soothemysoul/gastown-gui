@@ -7,6 +7,7 @@
 import { AGENT_TYPES, STATUS_ICONS, STATUS_COLORS, getAgentConfig } from '../shared/agent-types.js';
 import { api } from '../api.js';
 import { showToast } from './toast.js';
+import { AGENT_PEEK, RIGS_REFRESH, STATUS_REFRESH } from '../shared/events.js';
 import { escapeHtml } from '../utils/html.js';
 import { getStaggerClass } from '../shared/animations.js';
 
@@ -237,7 +238,7 @@ function extractRepoName(url) {
  * Show agent peek modal
  */
 function showAgentPeek(agentId) {
-  const event = new CustomEvent('agent:peek', { detail: { agentId } });
+  const event = new CustomEvent(AGENT_PEEK, { detail: { agentId } });
   document.dispatchEvent(event);
 }
 
@@ -254,7 +255,7 @@ async function handleAgentStart(rig, name, btn) {
     if (result.success) {
       showToast(`Started ${rig}/${name}`, 'success');
       // Trigger refresh
-      document.dispatchEvent(new CustomEvent('rigs:refresh'));
+      document.dispatchEvent(new CustomEvent(RIGS_REFRESH));
     } else {
       showToast(`Failed to start: ${result.error}`, 'error');
     }
@@ -279,7 +280,7 @@ async function handleAgentStop(rig, name, btn) {
     if (result.success) {
       showToast(`Stopped ${rig}/${name}`, 'success');
       // Trigger refresh
-      document.dispatchEvent(new CustomEvent('rigs:refresh'));
+      document.dispatchEvent(new CustomEvent(RIGS_REFRESH));
     } else {
       showToast(`Failed to stop: ${result.error}`, 'error');
     }
@@ -304,7 +305,7 @@ async function handleAgentRestart(rig, name, btn) {
     if (result.success) {
       showToast(`Restarted ${rig}/${name}`, 'success');
       // Trigger refresh
-      document.dispatchEvent(new CustomEvent('rigs:refresh'));
+      document.dispatchEvent(new CustomEvent(RIGS_REFRESH));
     } else {
       showToast(`Failed to restart: ${result.error}`, 'error');
     }
@@ -334,8 +335,8 @@ async function handleRigRemove(rigName, btn) {
     if (result.success) {
       showToast(`Rig "${rigName}" removed`, 'success');
       // Trigger refresh
-      document.dispatchEvent(new CustomEvent('rigs:refresh'));
-      document.dispatchEvent(new CustomEvent('status:refresh'));
+      document.dispatchEvent(new CustomEvent(RIGS_REFRESH));
+      document.dispatchEvent(new CustomEvent(STATUS_REFRESH));
     } else {
       showToast(`Failed to remove rig: ${result.error}`, 'error');
     }

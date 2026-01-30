@@ -9,6 +9,7 @@ import { showToast } from './toast.js';
 import { escapeHtml, truncate } from '../utils/html.js';
 import { formatTimeAgoOrDate } from '../utils/formatting.js';
 import { getBeadPriority } from '../shared/beads.js';
+import { BEAD_DETAIL, WORK_REFRESH } from '../shared/events.js';
 import { TIMING_MS } from '../shared/timing.js';
 import { getStaggerClass } from '../shared/animations.js';
 import { parseCloseReason } from '../shared/close-reason.js';
@@ -168,7 +169,7 @@ async function handleWorkAction(action, beadId, btn) {
     if (result && result.success) {
       showToast(`Work ${action === 'done' ? 'completed' : action + 'ed'}: ${beadId}`, 'success');
       // Trigger work list refresh
-      document.dispatchEvent(new CustomEvent('work:refresh'));
+      document.dispatchEvent(new CustomEvent(WORK_REFRESH));
     } else if (result) {
       showToast(`Failed: ${result.error || 'Unknown error'}`, 'error');
     }
@@ -254,7 +255,7 @@ function renderBeadCard(bead, index) {
  * Show bead detail modal
  */
 function showBeadDetail(beadId, bead) {
-  const event = new CustomEvent('bead:detail', { detail: { beadId, bead } });
+  const event = new CustomEvent(BEAD_DETAIL, { detail: { beadId, bead } });
   document.dispatchEvent(event);
 }
 

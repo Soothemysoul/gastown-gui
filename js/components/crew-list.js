@@ -6,6 +6,7 @@
 
 import { api } from '../api.js';
 import { showToast } from './toast.js';
+import { CREW_REFRESH, MODAL_CLOSE, MODAL_SHOW } from '../shared/events.js';
 import { escapeHtml } from '../utils/html.js';
 import { getStaggerClass } from '../shared/animations.js';
 
@@ -151,7 +152,7 @@ async function showCrewStatus(name) {
     const status = await api.getCrewStatus(name);
 
     // Dispatch event to show status in a modal
-    document.dispatchEvent(new CustomEvent('modal:show', {
+    document.dispatchEvent(new CustomEvent(MODAL_SHOW, {
       detail: {
         title: `Crew: ${name}`,
         content: `
@@ -209,7 +210,7 @@ async function handleCrewRemove(name) {
     showToast(`Crew "${name}" removed successfully`, 'success');
 
     // Dispatch event to refresh the list
-    document.dispatchEvent(new CustomEvent('crew:refresh'));
+    document.dispatchEvent(new CustomEvent(CREW_REFRESH));
   } catch (err) {
     showToast(`Failed to remove crew: ${err.message}`, 'error');
   }
@@ -219,7 +220,7 @@ async function handleCrewRemove(name) {
  * Show new crew creation modal
  */
 export function showNewCrewModal() {
-  document.dispatchEvent(new CustomEvent('modal:show', {
+  document.dispatchEvent(new CustomEvent(MODAL_SHOW, {
     detail: {
       title: 'Create New Crew',
       content: `
@@ -253,8 +254,8 @@ export function showNewCrewModal() {
             showToast(`Crew "${name}" created successfully`, 'success');
 
             // Close modal and refresh
-            document.dispatchEvent(new CustomEvent('modal:close'));
-            document.dispatchEvent(new CustomEvent('crew:refresh'));
+            document.dispatchEvent(new CustomEvent(MODAL_CLOSE));
+            document.dispatchEvent(new CustomEvent(CREW_REFRESH));
           } catch (err) {
             showToast(`Failed to create crew: ${err.message}`, 'error');
           }

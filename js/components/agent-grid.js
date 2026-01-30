@@ -5,6 +5,7 @@
  */
 
 import { AGENT_TYPES, STATUS_ICONS, STATUS_COLORS, getAgentConfig, formatAgentName } from '../shared/agent-types.js';
+import { AGENT_DETAIL, AGENT_NUDGE, AGENT_PEEK, POLECAT_ACTION } from '../shared/events.js';
 import { escapeHtml, truncate } from '../utils/html.js';
 import { getStaggerClass } from '../shared/animations.js';
 
@@ -230,7 +231,7 @@ function renderAgentStats(agent) {
  * Show agent detail modal
  */
 function showAgentDetail(agentId) {
-  const event = new CustomEvent('agent:detail', { detail: { agentId } });
+  const event = new CustomEvent(AGENT_DETAIL, { detail: { agentId } });
   document.dispatchEvent(event);
 }
 
@@ -238,7 +239,7 @@ function showAgentDetail(agentId) {
  * Show nudge modal for an agent
  */
 function showNudgeModal(agentId) {
-  const event = new CustomEvent('agent:nudge', { detail: { agentId } });
+  const event = new CustomEvent(AGENT_NUDGE, { detail: { agentId } });
   document.dispatchEvent(event);
 }
 
@@ -259,7 +260,7 @@ async function handlePolecatAction(agentId, action) {
   const name = parts.slice(1).join('/');
 
   // Dispatch event for API call (handled by app.js or api.js)
-  const event = new CustomEvent('polecat:action', {
+  const event = new CustomEvent(POLECAT_ACTION, {
     detail: { rig, name, action, agentId }
   });
   document.dispatchEvent(event);
@@ -269,7 +270,7 @@ async function handlePolecatAction(agentId, action) {
  * Show agent output in peek modal
  */
 function showAgentOutput(agentId) {
-  const event = new CustomEvent('agent:peek', { detail: { agentId } });
+  const event = new CustomEvent(AGENT_PEEK, { detail: { agentId } });
   document.dispatchEvent(event);
 }
 

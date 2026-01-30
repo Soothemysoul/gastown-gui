@@ -13,6 +13,24 @@ import { debounce } from '../utils/performance.js';
 import { getBeadPriority } from '../shared/beads.js';
 import { parseCloseReason } from '../shared/close-reason.js';
 import { TIMING_MS } from '../shared/timing.js';
+import {
+  AGENT_DETAIL,
+  AGENT_NUDGE,
+  AGENT_PEEK,
+  BEAD_CREATED,
+  BEAD_DETAIL,
+  BEAD_SLING,
+  CONVOY_CREATED,
+  CONVOY_DETAIL,
+  CONVOY_ESCALATE,
+  CONVOY_ESCALATED,
+  MAIL_DETAIL,
+  MAIL_REPLY,
+  MODAL_CLOSE,
+  MODAL_SHOW,
+  RIGS_REFRESH,
+  WORK_SLUNG,
+} from '../shared/events.js';
 
 // Modal registry
 const modals = new Map();
@@ -105,38 +123,38 @@ export function initModals() {
   });
 
   // Listen for custom modal events
-  document.addEventListener('convoy:detail', (e) => {
+  document.addEventListener(CONVOY_DETAIL, (e) => {
     showConvoyDetailModal(e.detail.convoyId);
   });
 
-  document.addEventListener('agent:detail', (e) => {
+  document.addEventListener(AGENT_DETAIL, (e) => {
     showAgentDetailModal(e.detail.agentId);
   });
 
-  document.addEventListener('agent:nudge', (e) => {
+  document.addEventListener(AGENT_NUDGE, (e) => {
     showNudgeModal(e.detail.agentId);
   });
 
-  document.addEventListener('mail:detail', (e) => {
+  document.addEventListener(MAIL_DETAIL, (e) => {
     showMailDetailModal(e.detail.mailId, e.detail.mail);
   });
 
-  document.addEventListener('convoy:escalate', (e) => {
+  document.addEventListener(CONVOY_ESCALATE, (e) => {
     showEscalationModal(e.detail.convoyId, e.detail.convoyName);
   });
 
-  document.addEventListener('mail:reply', (e) => {
+  document.addEventListener(MAIL_REPLY, (e) => {
     openModal('mail-compose', {
       replyTo: e.detail.mail.from,
       subject: e.detail.mail.subject,
     });
   });
 
-  document.addEventListener('bead:detail', (e) => {
+  document.addEventListener(BEAD_DETAIL, (e) => {
     showBeadDetailModal(e.detail.beadId, e.detail.bead);
   });
 
-  document.addEventListener('agent:peek', (e) => {
+  document.addEventListener(AGENT_PEEK, (e) => {
     showPeekModal(e.detail.agentId);
   });
 
@@ -147,11 +165,11 @@ export function initModals() {
   });
 
   // Generic dynamic modal handler (event-driven)
-  document.addEventListener('modal:show', (e) => {
+  document.addEventListener(MODAL_SHOW, (e) => {
     showEventDrivenModal(e.detail);
   });
 
-  document.addEventListener('modal:close', () => {
+  document.addEventListener(MODAL_CLOSE, () => {
     closeDynamicModal();
   });
 }
@@ -334,7 +352,7 @@ async function handleNewConvoySubmit(form) {
     closeAllModals();
 
     // Dispatch event for refresh
-    document.dispatchEvent(new CustomEvent('convoy:created', { detail: result }));
+    document.dispatchEvent(new CustomEvent(CONVOY_CREATED, { detail: result }));
   } catch (err) {
     showToast(`Failed to create convoy: ${err.message}`, 'error');
   } finally {
@@ -381,7 +399,7 @@ async function handleNewBeadSubmit(form) {
       showToast(`Work item created: ${result.bead_id}`, 'success');
 
       // Dispatch event for UI refresh
-      document.dispatchEvent(new CustomEvent('bead:created', { detail: result }));
+      document.dispatchEvent(new CustomEvent(BEAD_CREATED, { detail: result }));
 
       // If "sling now" was checked, open sling modal with bead pre-filled
       if (slingNow && result.bead_id) {
@@ -577,7 +595,7 @@ async function handleSlingSubmit(form) {
   api.sling(bead, target, { molecule, quality }).then(result => {
     showToast(`Work slung: ${bead} → ${target}`, 'success');
     // Dispatch event
-    document.dispatchEvent(new CustomEvent('work:slung', { detail: result }));
+    document.dispatchEvent(new CustomEvent(WORK_SLUNG, { detail: result }));
   }).catch(err => {
     // For sling errors, we can't show the fancy error in the modal (it's closed)
     // So just show a toast with the error message
@@ -951,7 +969,7 @@ async function handleNewRigSubmit(form) {
     if (result.success) {
       showToast(`Rig "${name}" added successfully`, 'success');
       // Trigger refresh
-      document.dispatchEvent(new CustomEvent('rigs:refresh'));
+      document.dispatchEvent(new CustomEvent(RIGS_REFRESH));
     } else {
       showToast(`Failed to add rig: ${result.error}`, 'error');
     }
@@ -1163,7 +1181,7 @@ function showMailDetailModal(mailId, mail) {
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="document.dispatchEvent(new CustomEvent('mail:reply', { detail: { mail: ${JSON.stringify(mail)} } }))">
+      <button class="btn btn-secondary" onclick="document.dispatchEvent(new CustomEvent('${MAIL_REPLY}', { detail: { mail: ${JSON.stringify(mail)} } }))">
         <span class="material-icons">reply</span>
         Reply
       </button>
@@ -1317,7 +1335,7 @@ function showBeadDetailModal(beadId, bead) {
   const slingBtn = modal.querySelector('.sling-btn');
   if (slingBtn) {
     slingBtn.addEventListener('click', () => {
-      document.dispatchEvent(new CustomEvent('bead:sling', { detail: { beadId } }));
+      document.dispatchEvent(new CustomEvent(BEAD_SLING, { detail: { beadId } }));
       closeAllModals();
     });
   }
@@ -1537,7 +1555,7 @@ function showEscalationModal(convoyId, convoyName) {
       closeAllModals();
 
       // Dispatch event for UI updates
-      document.dispatchEvent(new CustomEvent('convoy:escalated', {
+      document.dispatchEvent(new CustomEvent(CONVOY_ESCALATED, {
         detail: { convoyId, reason, priority }
       }));
     } catch (err) {
