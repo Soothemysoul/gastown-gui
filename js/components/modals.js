@@ -23,6 +23,7 @@ let overlay = null;
 // Peek modal state
 let peekAutoRefreshInterval = null;
 let currentPeekAgentId = null;
+const PEEK_AUTO_REFRESH_INTERVAL_MS = 2000;
 
 // GitHub repo mapping is configured in `js/shared/github-repos.js`.
 
@@ -1704,7 +1705,7 @@ function startAutoRefresh() {
     if (currentPeekAgentId) {
       refreshPeekOutput(currentPeekAgentId);
     }
-  }, 2000); // Refresh every 2 seconds
+  }, PEEK_AUTO_REFRESH_INTERVAL_MS);
 }
 
 function stopAutoRefresh() {
