@@ -10,6 +10,7 @@ import { state } from '../state.js';
 import { showToast } from './toast.js';
 import { AGENT_TYPES, STATUS_COLORS, getAgentConfig } from '../shared/agent-types.js';
 import { escapeHtml } from '../utils/html.js';
+import { formatTimeAgoCompact } from '../utils/formatting.js';
 
 /**
  * Calculate agent work status from an array of agents
@@ -492,7 +493,7 @@ function renderRecentWork(work) {
             <span class="work-status-dot" style="background: ${statusColor}"></span>
             <div class="work-info">
               <span class="work-title">${escapeHtml(item.title || item.id)}</span>
-              <span class="work-meta">${formatTimeAgo(item.updated_at || item.created_at)}</span>
+              <span class="work-meta">${formatTimeAgoCompact(item.updated_at || item.created_at)}</span>
             </div>
             <span class="work-status-badge" style="color: ${statusColor}">${item.status || 'open'}</span>
           </div>
@@ -583,19 +584,4 @@ function setupQuickActionHandlers() {
       document.querySelector('[data-view="rigs"]')?.click();
     });
   });
-}
-
-/**
- * Format time ago
- */
-function formatTimeAgo(timestamp) {
-  if (!timestamp) return '';
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diff = now - date;
-
-  if (diff < 60000) return 'just now';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-  return `${Math.floor(diff / 86400000)}d ago`;
 }
