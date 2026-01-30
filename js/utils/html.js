@@ -5,8 +5,16 @@
  * Centralized to avoid duplication across components.
  */
 
-// Reusable element for escaping (avoids creating new elements each time)
-const escapeEl = document.createElement('div');
+// Reusable element for escaping (avoids creating new elements each time).
+// Lazily created so this module can be imported in non-browser contexts (tests/scripts).
+let escapeEl = null;
+
+function getEscapeEl() {
+  if (escapeEl) return escapeEl;
+  if (typeof document === 'undefined') return null;
+  escapeEl = document.createElement('div');
+  return escapeEl;
+}
 
 /**
  * Escape HTML entities to prevent XSS
@@ -14,9 +22,22 @@ const escapeEl = document.createElement('div');
  * @returns {string} - Escaped string safe for innerHTML
  */
 export function escapeHtml(str) {
-  if (!str) return '';
-  escapeEl.textContent = str;
-  return escapeEl.innerHTML;
+  if (str === null || str === undefined) return '';
+  const text = String(str);
+
+  const el = getEscapeEl();
+  if (el) {
+    el.textContent = text;
+    return el.innerHTML;
+  }
+
+  // Fallback for non-DOM environments: escape the minimum set for safe HTML.
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /**
@@ -25,8 +46,8 @@ export function escapeHtml(str) {
  * @returns {string} - Escaped string safe for attributes
  */
 export function escapeAttr(str) {
-  if (!str) return '';
-  return str
+  if (str === null || str === undefined) return '';
+  return String(str)
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
@@ -41,8 +62,9 @@ export function escapeAttr(str) {
  * @returns {string} - Truncated string with ellipsis if needed
  */
 export function truncate(str, length) {
-  if (!str) return '';
-  return str.length > length ? str.slice(0, length) + '...' : str;
+  if (str === null || str === undefined) return '';
+  const text = String(str);
+  return text.length > length ? text.slice(0, length) + '...' : text;
 }
 
 /**
@@ -51,8 +73,9 @@ export function truncate(str, length) {
  * @returns {string} - Capitalized string
  */
 export function capitalize(str) {
-  if (!str) return '';
-  return str.charAt(0).toUpperCase() + str.slice(1);
+  if (str === null || str === undefined) return '';
+  const text = String(str);
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 /**
