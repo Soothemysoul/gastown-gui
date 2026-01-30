@@ -6,6 +6,7 @@
  */
 
 import { debounce as debounceFn } from '../utils/performance.js';
+import { escapeHtml } from '../utils/html.js';
 
 /**
  * Initialize autocomplete on an input element
@@ -202,12 +203,4 @@ export function renderAgentItem(item) {
       <span class="agent-status status-${statusClass}">${statusClass}</span>
     </div>
   `;
-}
-
-// Utility function
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
 }

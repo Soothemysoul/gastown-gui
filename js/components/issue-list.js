@@ -7,6 +7,7 @@
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { formatRelativeTime } from '../utils/formatting.js';
+import { escapeHtml } from '../utils/html.js';
 
 let container = null;
 let issues = [];
@@ -174,14 +175,4 @@ function openSlingModal(issue) {
     document.getElementById('modal-overlay').classList.remove('hidden');
     modal.classList.remove('hidden');
   }
-}
-
-/**
- * Escape HTML to prevent XSS
- */
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
 }

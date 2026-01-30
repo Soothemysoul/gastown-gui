@@ -9,6 +9,7 @@ import { api } from '../api.js';
 import { state } from '../state.js';
 import { showToast } from './toast.js';
 import { AGENT_TYPES, STATUS_COLORS, getAgentConfig } from '../shared/agent-types.js';
+import { escapeHtml } from '../utils/html.js';
 
 /**
  * Calculate agent work status from an array of agents
@@ -597,14 +598,4 @@ function formatTimeAgo(timestamp) {
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
   return `${Math.floor(diff / 86400000)}d ago`;
-}
-
-/**
- * Escape HTML
- */
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
 }

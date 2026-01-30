@@ -5,6 +5,7 @@
  */
 
 import { AGENT_TYPES, STATUS_ICONS, STATUS_COLORS, getAgentConfig, formatAgentName } from '../shared/agent-types.js';
+import { escapeHtml, truncate } from '../utils/html.js';
 
 /**
  * Render the agent grid
@@ -272,22 +273,6 @@ function showAgentOutput(agentId) {
 }
 
 // Utility functions
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-function truncate(str, length) {
-  if (!str) return '';
-  return str.length > length ? str.slice(0, length) + '...' : str;
-}
-
-function capitalize(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
 function formatDuration(seconds) {
   if (!seconds) return '0s';
   if (seconds < 60) return `${Math.round(seconds)}s`;

@@ -4,6 +4,8 @@
  * Provides non-intrusive notifications for user feedback.
  */
 
+import { escapeHtml } from '../utils/html.js';
+
 // Toast container reference
 let toastContainer = null;
 
@@ -182,12 +184,4 @@ export function showLoading(message) {
       setTimeout(() => dismissToast(toast), 4000);
     },
   };
-}
-
-// Utility function
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
 }

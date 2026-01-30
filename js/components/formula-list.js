@@ -6,6 +6,7 @@
 
 import { api } from '../api.js';
 import { showToast } from './toast.js';
+import { escapeHtml } from '../utils/html.js';
 
 let container = null;
 let formulas = [];
@@ -446,14 +447,4 @@ async function handleDeleteFormula(name) {
   } catch (err) {
     showToast(`Failed to delete formula: ${err.message}`, 'error');
   }
-}
-
-/**
- * Escape HTML to prevent XSS
- */
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
 }

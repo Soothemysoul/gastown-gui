@@ -5,6 +5,7 @@
  */
 
 import { AGENT_TYPES, getAgentConfig, formatAgentName } from '../shared/agent-types.js';
+import { escapeHtml, truncate } from '../utils/html.js';
 
 // Event type configuration (uses shared agent colors where applicable)
 const EVENT_CONFIG = {
@@ -228,17 +229,4 @@ function formatTime(timestamp) {
 
   // Otherwise show date
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-}
-
-// Utility functions
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-function truncate(str, length) {
-  if (!str) return '';
-  return str.length > length ? str.slice(0, length) + '...' : str;
 }

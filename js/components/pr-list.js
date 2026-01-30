@@ -7,6 +7,7 @@
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { formatRelativeTime } from '../utils/formatting.js';
+import { escapeHtml } from '../utils/html.js';
 
 // State
 let currentState = 'open';
@@ -206,12 +207,4 @@ export function renderPRList(prData) {
   prs.forEach(pr => {
     container.appendChild(createPRCard(pr));
   });
-}
-
-// Utility
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
 }

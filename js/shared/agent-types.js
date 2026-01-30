@@ -5,6 +5,8 @@
  * Used consistently across sidebar, mail, agent grid, and activity feed.
  */
 
+import { escapeHtml } from '../utils/html.js';
+
 // Agent type configuration with colors and icons
 export const AGENT_TYPES = {
   mayor: { color: '#a855f7', icon: 'account_balance', label: 'Mayor' },
@@ -108,14 +110,4 @@ export function createAgentBadge(agentPath, role = null, showIcon = true) {
     ${showIcon ? `<span class="material-icons">${config.icon}</span>` : ''}
     ${escapeHtml(name)}
   </span>`;
-}
-
-/**
- * Escape HTML special characters
- */
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
 }
