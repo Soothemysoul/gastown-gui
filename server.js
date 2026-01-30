@@ -30,7 +30,7 @@ const wss = new WebSocketServer({ server });
 
 const PORT = process.env.GASTOWN_PORT || 7667;
 const HOST = process.env.HOST || '127.0.0.1';
-const HOME = process.env.HOME || require('os').homedir();
+const HOME = process.env.HOME || os.homedir();
 const GT_ROOT = process.env.GT_ROOT || path.join(HOME, 'gt');
 
 // Simple in-memory cache with TTL
@@ -2102,14 +2102,13 @@ app.put('/api/formula/:name', async (req, res) => {
 
   // gt formula update doesn't exist, so we need to write directly to file
   // Formula files are stored at ~/.beads/formulas/{name}.toml
-  const fs = require('fs');
-  const path = require('path');
-  const os = require('os');
   const formulaPath = path.join(os.homedir(), '.beads', 'formulas', `${name}.toml`);
 
   try {
     // Check if formula exists
-    if (!fs.existsSync(formulaPath)) {
+    try {
+      await fsPromises.access(formulaPath);
+    } catch {
       return res.status(404).json({ error: 'Formula not found' });
     }
 
@@ -2121,10 +2120,10 @@ template = """
 ${template}
 """
 `;
-    fs.writeFileSync(formulaPath, content);
+    await fsPromises.writeFile(formulaPath, content, 'utf8');
 
     // Invalidate cache
-    invalidateCache('formulas');
+    cache.delete('formulas');
 
     broadcast({ type: 'formula_updated', data: { name } });
     res.json({ success: true, name, description, template });
@@ -2137,22 +2136,21 @@ ${template}
 app.delete('/api/formula/:name', async (req, res) => {
   const { name } = req.params;
 
-  const fs = require('fs');
-  const path = require('path');
-  const os = require('os');
   const formulaPath = path.join(os.homedir(), '.beads', 'formulas', `${name}.toml`);
 
   try {
     // Check if formula exists
-    if (!fs.existsSync(formulaPath)) {
+    try {
+      await fsPromises.access(formulaPath);
+    } catch {
       return res.status(404).json({ error: 'Formula not found' });
     }
 
     // Delete the formula file
-    fs.unlinkSync(formulaPath);
+    await fsPromises.unlink(formulaPath);
 
     // Invalidate cache
-    invalidateCache('formulas');
+    cache.delete('formulas');
 
     broadcast({ type: 'formula_deleted', data: { name } });
     res.json({ success: true, name });
