@@ -1181,13 +1181,16 @@ function showMailDetailModal(mailId, mail) {
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="document.dispatchEvent(new CustomEvent('${MAIL_REPLY}', { detail: { mail: ${JSON.stringify(mail)} } }))">
+      <button class="btn btn-secondary" data-action="reply">
         <span class="material-icons">reply</span>
         Reply
       </button>
     </div>
   `;
-  showDynamicModal('mail-detail', content);
+  const modal = showDynamicModal('mail-detail', content);
+  modal.querySelector('[data-action="reply"]')?.addEventListener('click', () => {
+    document.dispatchEvent(new CustomEvent(MAIL_REPLY, { detail: { mail } }));
+  });
 }
 
 // === Bead Detail Modal ===
