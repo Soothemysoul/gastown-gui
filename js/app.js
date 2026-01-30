@@ -25,6 +25,12 @@ import { initModals } from './components/modals.js';
 import { startTutorial, shouldShowTutorial } from './components/tutorial.js';
 import { startOnboarding, shouldShowOnboarding, resetOnboarding } from './components/onboarding.js';
 
+const ONBOARDING_START_DELAY_MS = 500;
+const TUTORIAL_START_DELAY_MS = 1000;
+const WS_RECONNECT_DELAY_MS = 5000;
+const BACKGROUND_PRELOAD_DELAY_MS = 500;
+const CONNECTION_ERROR_TOAST_DURATION_MS = 10000;
+
 // DOM Elements
 const elements = {
   townName: document.getElementById('town-name'),
@@ -125,10 +131,10 @@ async function init() {
   // Check for first-time users - show onboarding wizard
   const showOnboarding = await shouldShowOnboarding();
   if (showOnboarding) {
-    setTimeout(() => startOnboarding(), 500);
+    setTimeout(() => startOnboarding(), ONBOARDING_START_DELAY_MS);
   } else if (shouldShowTutorial()) {
     // Show tutorial only if onboarding was already completed
-    setTimeout(() => startTutorial(), 1000);
+    setTimeout(() => startTutorial(), TUTORIAL_START_DELAY_MS);
   }
 
   // Listen for onboarding completion
@@ -255,7 +261,7 @@ function connectWebSocket() {
     showToast('Disconnected from server', 'warning');
 
     // Attempt reconnect after 5 seconds
-    setTimeout(connectWebSocket, 5000);
+    setTimeout(connectWebSocket, WS_RECONNECT_DELAY_MS);
   };
 
   ws.onerror = (error) => {
@@ -398,7 +404,7 @@ async function loadInitialData() {
   } catch (err) {
     console.error('[App] Failed to load initial data:', err);
     elements.statusMessage.textContent = 'Cannot connect to server';
-    showToast('Cannot connect - is the server running? Check terminal for the correct URL.', 'error', 10000);
+    showToast('Cannot connect - is the server running? Check terminal for the correct URL.', 'error', CONNECTION_ERROR_TOAST_DURATION_MS);
   }
 }
 
@@ -406,7 +412,7 @@ async function loadInitialData() {
 async function preloadBackgroundData() {
   try {
     // Wait 500ms to let initial UI settle, then preload in background
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, BACKGROUND_PRELOAD_DELAY_MS));
 
     console.log('[App] Preloading background data...');
 
