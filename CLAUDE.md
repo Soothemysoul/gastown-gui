@@ -20,6 +20,8 @@ npm run test:e2e   # E2E tests only
 gastown-gui/
 ├── server.js              # Express server + API endpoints wrapping gt CLI
 ├── server/                # Backend modules (in progress)
+│   ├── app/
+│   │   └── createApp.js
 │   ├── infrastructure/
 │   │   ├── CacheRegistry.js
 │   │   ├── CommandRunner.js

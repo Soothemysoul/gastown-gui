@@ -18,20 +18,30 @@ import fsPromises from 'fs/promises';
 import os from 'os';
 import readline from 'readline';
 import { fileURLToPath } from 'url';
-import cors from 'cors';
+
+import { createApp } from './server/app/createApp.js';
 
 const execFileAsync = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
-const server = createServer(app);
-const wss = new WebSocketServer({ server });
-
 const PORT = process.env.GASTOWN_PORT || 7667;
 const HOST = process.env.HOST || '127.0.0.1';
 const HOME = process.env.HOME || os.homedir();
 const GT_ROOT = process.env.GT_ROOT || path.join(HOME, 'gt');
+
+const defaultOrigins = [
+  `http://localhost:${PORT}`,
+  `http://127.0.0.1:${PORT}`,
+];
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim()).filter(Boolean)
+  : defaultOrigins;
+const allowNullOrigin = process.env.ALLOW_NULL_ORIGIN === 'true';
+
+const app = createApp({ allowedOrigins, allowNullOrigin });
+const server = createServer(app);
+const wss = new WebSocketServer({ server });
 
 // Simple in-memory cache with TTL
 const cache = new Map();
@@ -131,28 +141,6 @@ function getPendingOrExecute(key, executor) {
 }
 
 // Middleware
-app.disable('x-powered-by');
-
-const defaultOrigins = [
-  `http://localhost:${PORT}`,
-  `http://127.0.0.1:${PORT}`,
-];
-const allowedOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim()).filter(Boolean)
-  : defaultOrigins;
-const allowAllOrigins = allowedOrigins.includes('*');
-const allowNullOrigin = process.env.ALLOW_NULL_ORIGIN === 'true';
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (allowAllOrigins) return callback(null, true);
-    if (origin === 'null') return callback(allowNullOrigin ? null : new Error('CORS origin not allowed'), allowNullOrigin);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error('CORS origin not allowed'));
-  },
-}));
-app.use(express.json({ limit: '1mb' }));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use('/css', express.static(path.join(__dirname, 'css')));
 // Add cache-control headers for JS files to improve load times
