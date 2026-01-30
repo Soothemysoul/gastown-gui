@@ -25,11 +25,14 @@ import { CommandRunner } from './server/infrastructure/CommandRunner.js';
 import { CacheRegistry } from './server/infrastructure/CacheRegistry.js';
 import { BDGateway } from './server/gateways/BDGateway.js';
 import { GTGateway } from './server/gateways/GTGateway.js';
+import { GitHubGateway } from './server/gateways/GitHubGateway.js';
 import { TmuxGateway } from './server/gateways/TmuxGateway.js';
 import { FormulaService } from './server/services/FormulaService.js';
+import { GitHubService } from './server/services/GitHubService.js';
 import { StatusService } from './server/services/StatusService.js';
 import { TargetService } from './server/services/TargetService.js';
 import { registerFormulaRoutes } from './server/routes/formulas.js';
+import { registerGitHubRoutes } from './server/routes/github.js';
 import { registerStatusRoutes } from './server/routes/status.js';
 import { registerTargetRoutes } from './server/routes/targets.js';
 
@@ -49,6 +52,8 @@ const tmuxGateway = new TmuxGateway({ runner: commandRunner });
 const backendCache = new CacheRegistry();
 const statusService = new StatusService({ gtGateway, tmuxGateway, cache: backendCache, gtRoot: GT_ROOT });
 const targetService = new TargetService({ statusService });
+const gitHubGateway = new GitHubGateway({ runner: commandRunner });
+const gitHubService = new GitHubService({ gitHubGateway, statusService, cache: backendCache });
 
 const defaultOrigins = [
   `http://localhost:${PORT}`,
@@ -1836,234 +1841,7 @@ const formulaService = new FormulaService({
 registerFormulaRoutes(app, { formulaService });
 
 // ============= GitHub Integration =============
-
-// Extract GitHub repo from git_url
-function extractGitHubRepo(gitUrl) {
-  if (!gitUrl) return null;
-  // Handle: https://github.com/owner/repo, git@github.com:owner/repo, etc.
-  const match = gitUrl.match(/github\.com[:/]([^/]+\/[^/.\s]+)/);
-  if (match) {
-    // Remove .git suffix if present
-    return match[1].replace(/\.git$/, '');
-  }
-  return null;
-}
-
-// Get all GitHub PRs across rigs
-app.get('/api/github/prs', async (req, res) => {
-  const state = req.query.state || 'open'; // open, closed, all
-  const cacheKey = `github_prs_${state}`;
-
-  // Check cache first (skip if ?refresh=true)
-  if (req.query.refresh !== 'true') {
-    const cached = getCached(cacheKey);
-    if (cached) {
-      return res.json(cached);
-    }
-  }
-
-  try {
-    // Get status with --fast flag (uses cached status data from gt)
-    const result = await executeGT(['status', '--json', '--fast']);
-    if (!result.success) {
-      return res.status(500).json({ error: 'Failed to get status' });
-    }
-
-    const data = parseJSON(result.data) || {};
-    const rigs = data.rigs || [];
-
-    // Enrich rigs with git_url from config.json (not in raw status)
-    for (const rig of rigs) {
-      if (!rig.git_url) {
-        const rigConfig = await getRigConfig(rig.name);
-        if (rigConfig) {
-          rig.git_url = rigConfig.git_url || null;
-        }
-      }
-    }
-    console.log(`[GitHub] Found ${rigs.length} rigs, ${rigs.filter(r => r.git_url).length} with git_url`);
-
-    // Extract repos from rigs
-    const repoPromises = rigs
-      .filter(rig => rig.git_url)
-      .map(rig => {
-        const repo = extractGitHubRepo(rig.git_url);
-        if (!repo) return Promise.resolve([]);
-
-        // Fetch PRs in parallel
-        return execFileAsync(
-          'gh',
-          ['pr', 'list', '--repo', repo, '--state', state, '--json', 'number,title,author,createdAt,updatedAt,url,headRefName,state,isDraft,reviewDecision', '--limit', '20'],
-          { timeout: 10000 }
-        )
-          .then(({ stdout }) => {
-            const prs = JSON.parse(String(stdout || '') || '[]');
-            return prs.map(pr => ({ ...pr, rig: rig.name, repo }));
-          })
-          .catch(err => {
-            console.error(`[GitHub] Failed to fetch PRs for ${repo}:`, err.message);
-            return [];
-          });
-      });
-
-    // Wait for all PR fetches to complete in parallel
-    const results = await Promise.all(repoPromises);
-    const allPRs = results.flat();
-
-    // Sort by updated date descending
-    allPRs.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-
-    // Cache the result
-    setCache(cacheKey, allPRs, CACHE_TTL.github_prs);
-
-    res.json(allPRs);
-  } catch (err) {
-    console.error('[GitHub] Error fetching PRs:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get PR details
-app.get('/api/github/pr/:repo/:number', async (req, res) => {
-  const { repo, number } = req.params;
-
-  try {
-    const { stdout } = await execFileAsync(
-      'gh',
-      ['pr', 'view', String(number), '--repo', repo, '--json', 'number,title,author,body,createdAt,updatedAt,url,headRefName,baseRefName,state,isDraft,additions,deletions,commits,files,reviews,comments'],
-      { timeout: 15000 }
-    );
-
-    const pr = JSON.parse(String(stdout || '') || '{}');
-    res.json(pr);
-  } catch (err) {
-    console.error(`[GitHub] Error fetching PR #${number}:`, err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get GitHub issues across all rigs
-app.get('/api/github/issues', async (req, res) => {
-  const state = req.query.state || 'open'; // open, closed, all
-  const cacheKey = `github_issues_${state}`;
-
-  // Check cache
-  if (req.query.refresh !== 'true') {
-    const cached = getCached(cacheKey);
-    if (cached) return res.json(cached);
-  }
-
-  try {
-    // Get status with --fast flag
-    const result = await executeGT(['status', '--json', '--fast']);
-    if (!result.success) {
-      return res.status(500).json({ error: 'Failed to get status' });
-    }
-
-    const status = parseJSON(result.data);
-    const rigs = status?.rigs || [];
-
-    // Enrich rigs with git_url from config.json
-    for (const rig of rigs) {
-      if (!rig.git_url) {
-        const rigConfig = await getRigConfig(rig.name);
-        if (rigConfig) {
-          rig.git_url = rigConfig.git_url || null;
-        }
-      }
-    }
-
-    // Fetch issues in parallel (like PRs)
-    const issuePromises = rigs
-      .filter(rig => rig.git_url)
-      .map(rig => {
-        const repo = extractGitHubRepo(rig.git_url);
-        if (!repo) return Promise.resolve([]);
-
-        return execFileAsync(
-          'gh',
-          ['issue', 'list', '--repo', repo, '--state', state, '--json', 'number,title,author,labels,createdAt,updatedAt,url,state', '--limit', '30'],
-          { timeout: 10000 }
-        )
-          .then(({ stdout }) => {
-            const issues = JSON.parse(String(stdout || '') || '[]');
-            return issues.map(issue => ({ ...issue, repo, rig: rig.name }));
-          })
-          .catch(err => {
-            console.warn(`[GitHub] Failed to fetch issues for ${repo}:`, err.message);
-            return [];
-          });
-      });
-
-    // Wait for all fetches in parallel
-    const results = await Promise.all(issuePromises);
-    const allIssues = results.flat();
-
-    // Sort by updatedAt descending
-    allIssues.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-
-    // Cache result
-    setCache(cacheKey, allIssues, CACHE_TTL.github_issues);
-
-    res.json(allIssues);
-  } catch (err) {
-    console.error('[GitHub] Error fetching issues:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get GitHub issue details
-app.get('/api/github/issue/:repo/:number', async (req, res) => {
-  const { repo, number } = req.params;
-
-  try {
-    const { stdout } = await execFileAsync(
-      'gh',
-      ['issue', 'view', String(number), '--repo', repo, '--json', 'number,title,author,body,createdAt,updatedAt,url,state,labels,comments,assignees'],
-      { timeout: 15000 }
-    );
-
-    const issue = JSON.parse(String(stdout || '') || '{}');
-    res.json(issue);
-  } catch (err) {
-    console.error(`[GitHub] Error fetching issue #${number}:`, err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// List all GitHub repos for current user
-app.get('/api/github/repos', async (req, res) => {
-  const limit = parseInt(req.query.limit) || 100;
-  const visibility = req.query.visibility; // public, private, or omit for all
-  const cacheKey = `github_repos_${visibility || 'all'}_${limit}`;
-
-  // Check cache (repos don't change often)
-  if (req.query.refresh !== 'true') {
-    const cached = getCached(cacheKey);
-    if (cached) return res.json(cached);
-  }
-
-  try {
-    const args = ['repo', 'list', '--limit', String(limit), '--json', 'name,nameWithOwner,description,url,isPrivate,isFork,pushedAt,primaryLanguage,stargazerCount'];
-    if (visibility && visibility !== 'all') {
-      args.push('--visibility', visibility);
-    }
-    const { stdout } = await execFileAsync('gh', args, { timeout: 30000 });
-
-    const repos = JSON.parse(String(stdout || '') || '[]');
-
-    // Sort by most recently pushed
-    repos.sort((a, b) => new Date(b.pushedAt) - new Date(a.pushedAt));
-
-    // Cache for 5 minutes
-    setCache(cacheKey, repos, 5 * 60 * 1000);
-
-    res.json(repos);
-  } catch (err) {
-    console.error('[GitHub] Error listing repos:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
+registerGitHubRoutes(app, { gitHubService });
 
 // ============= WebSocket for Real-time Events =============
 
