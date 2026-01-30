@@ -39,7 +39,7 @@ This repo’s backend is fundamentally a **GUI → CLI bridge**: it receives HTT
 
 ```mermaid
 flowchart LR
-  Browser[Browser UI] -->|HTTP + WebSocket| Monolith[server.js\n(monolith)]
+  Browser[Browser UI] -->|HTTP + WebSocket| Monolith[server.js (monolith)]
   Monolith -->|exec/spawn| GT[gt CLI]
   Monolith -->|exec/spawn| BD[bd CLI]
   Monolith -->|exec/spawn| GH[gh CLI]
@@ -62,14 +62,14 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  Browser[Browser UI] -->|HTTP| Routes[server/routes/*\n(thin adapters)]
-  Browser -->|WebSocket| WS[server.js\n(broadcast)]
+  Browser[Browser UI] -->|HTTP| Routes[server/routes (thin adapters)]
+  Browser -->|WebSocket| WS[server.js (broadcast)]
 
   subgraph Core[Backend Application Core (server/)]
-    Routes --> Services[server/services/*\n(Service Layer)]
-    Services --> VOs[server/domain/values/*\n(Value Objects)]
+    Routes --> Services[server/services (Service Layer)]
+    Services --> VOs[server/domain/values (Value Objects)]
     Services --> CacheReg[CacheRegistry]
-    Services --> Gateways[server/gateways/*\n(Gateway)]
+    Services --> Gateways[server/gateways (Gateway)]
     Gateways --> Runner[CommandRunner]
   end
 
@@ -139,9 +139,18 @@ Test inventory (current branch):
 
 ## Change Stats (Base → Head)
 
-- Files changed: **72** (added 68, modified 4, deleted 0)
-- Lines: **+6741 / -1010** (net **+5731**)
-- Tests only: **+1523 / -2** (net **+1521**)
+The totals below distinguish “production code” from tests/docs so the numbers stay meaningful.
+
+### Production code (excluding tests/docs)
+
+- Production code: **+1909 / -996** (net **+913**)
+  - Backend (`server.js` + `server/`): **+1908 / -991** (net **+917**)
+  - Config/other: **+1 / -5** (net **-4**)
+- `server.js` alone: **2542 → 1671** (net **-871**)
+
+### Tests (excluded from production totals)
+
+- Tests: **+1523 / -2** (net **+1521**)
 
 ### Backend / Server Refactor Files
 
@@ -222,7 +231,7 @@ Test inventory (current branch):
 | A | `refactoring-analysis/07-PROCESS-AND-KNOWLEDGE.md` | 175 | 0 | +175 |
 | A | `refactoring-analysis/08-IMPLEMENTATION-PLAN.md` | 186 | 0 | +186 |
 | A | `refactoring-analysis/09-IMPLEMENTATION-REPORT.md` | 82 | 0 | +82 |
-| A | `refactoring-analysis/10-REFACTOR-SUMMARY.md` | 249 | 0 | +249 |
+| A | `refactoring-analysis/10-REFACTOR-SUMMARY.md` | 258 | 0 | +258 |
 | A | `refactoring-analysis/trace/README.md` | 23 | 0 | +23 |
 | A | `refactoring-analysis/trace/REPORT.md` | 31 | 0 | +31 |
 | A | `refactoring-analysis/trace/user-prompts.sanitized.jsonl` | 450 | 0 | +450 |
