@@ -229,7 +229,7 @@ function renderServiceControls(agentsByRole) {
         const isRunning = agents.some(a => a.running);
         const statusClass = isRunning ? 'running' : 'stopped';
         const rigName = agents[0]?.rig || '';
-        const rigAttr = rigName ? ` data-rig="${rigName}"` : '';
+        const rigAttr = rigName ? ` data-rig="${escapeAttr(rigName)}"` : '';
 
         return `
           <div class="service-item" data-service="${svc.name}">
@@ -289,10 +289,10 @@ async function handleServiceAction(action, service, btn, rig) {
         result = await api.startService(service, rig);
         break;
       case 'stop':
-        result = await api.stopService(service);
+        result = await api.stopService(service, rig);
         break;
       case 'restart':
-        result = await api.restartService(service);
+        result = await api.restartService(service, rig);
         break;
     }
 

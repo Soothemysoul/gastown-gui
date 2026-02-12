@@ -566,6 +566,11 @@ app.post('/api/service/:name/up', (req, res) => {
 
 app.post('/api/service/:name/down', (req, res) => {
   const { name } = req.params;
+  const { rig } = req.body || {};
+  const needsRig = ['witness', 'refinery'].includes(name.toLowerCase());
+  if (needsRig && !rig) {
+    return res.status(400).json({ error: `${name} requires a rig parameter` });
+  }
   const service = mockServices.get(name);
   if (!service) {
     return res.status(404).json({ error: 'Service not found' });
@@ -577,6 +582,11 @@ app.post('/api/service/:name/down', (req, res) => {
 
 app.post('/api/service/:name/restart', (req, res) => {
   const { name } = req.params;
+  const { rig } = req.body || {};
+  const needsRig = ['witness', 'refinery'].includes(name.toLowerCase());
+  if (needsRig && !rig) {
+    return res.status(400).json({ error: `${name} requires a rig parameter` });
+  }
   let service = mockServices.get(name);
   if (!service) {
     service = { name, status: 'running', pid: Math.floor(Math.random() * 10000) + 10000 };
@@ -584,6 +594,7 @@ app.post('/api/service/:name/restart', (req, res) => {
     service.status = 'running';
     service.pid = Math.floor(Math.random() * 10000) + 10000;
   }
+  if (rig) service.rig = rig;
   mockServices.set(name, service);
   res.json({ success: true, service, restarted: true });
 });

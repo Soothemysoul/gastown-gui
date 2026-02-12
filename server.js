@@ -1422,16 +1422,24 @@ app.post('/api/service/:name/up', async (req, res) => {
 // Stop a service
 app.post('/api/service/:name/down', async (req, res) => {
   const { name } = req.params;
+  const { rig } = req.body || {};
   const validServices = ['mayor', 'witness', 'refinery', 'deacon'];
+  const needsRig = ['witness', 'refinery'].includes(name.toLowerCase());
 
   if (!validServices.includes(name.toLowerCase())) {
     return res.status(400).json({ error: `Invalid service: ${name}. Valid services: ${validServices.join(', ')}` });
   }
 
+  if (needsRig && !rig) {
+    return res.status(400).json({ error: `${name} requires a rig parameter` });
+  }
+
   console.log(`[Service] Stopping ${name}...`);
 
   try {
-    const result = await executeGT([name, 'stop'], { timeout: 10000 });
+    const args = [name, 'stop'];
+    if (rig) args.push(rig);
+    const result = await executeGT(args, { timeout: 10000 });
 
     if (result.success) {
       broadcast({ type: 'service_stopped', data: { service: name } });
@@ -1456,10 +1464,16 @@ app.post('/api/service/:name/down', async (req, res) => {
 // Restart a service
 app.post('/api/service/:name/restart', async (req, res) => {
   const { name } = req.params;
+  const { rig } = req.body || {};
   const validServices = ['mayor', 'witness', 'refinery', 'deacon'];
+  const needsRig = ['witness', 'refinery'].includes(name.toLowerCase());
 
   if (!validServices.includes(name.toLowerCase())) {
     return res.status(400).json({ error: `Invalid service: ${name}. Valid services: ${validServices.join(', ')}` });
+  }
+
+  if (needsRig && !rig) {
+    return res.status(400).json({ error: `${name} requires a rig parameter` });
   }
 
   console.log(`[Service] Restarting ${name}...`);
@@ -1467,7 +1481,9 @@ app.post('/api/service/:name/restart', async (req, res) => {
   try {
     // Stop first
     try {
-      await executeGT([name, 'stop'], { timeout: 10000 });
+      const stopArgs = [name, 'stop'];
+      if (rig) stopArgs.push(rig);
+      await executeGT(stopArgs, { timeout: 10000 });
     } catch {
       // Ignore stop errors
     }
@@ -1476,7 +1492,9 @@ app.post('/api/service/:name/restart', async (req, res) => {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Start
-    const result = await executeGT([name, 'start'], { timeout: 30000 });
+    const startArgs = [name, 'start'];
+    if (rig) startArgs.push(rig);
+    const result = await executeGT(startArgs, { timeout: 30000 });
 
     if (result.success) {
       broadcast({ type: 'service_restarted', data: { service: name } });

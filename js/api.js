@@ -280,12 +280,12 @@ export const api = {
     return this.post(`/api/service/${encodeURIComponent(name)}/up`, rig ? { rig } : undefined);
   },
 
-  stopService(name) {
-    return this.post(`/api/service/${encodeURIComponent(name)}/down`);
+  stopService(name, rig) {
+    return this.post(`/api/service/${encodeURIComponent(name)}/down`, rig ? { rig } : undefined);
   },
 
-  restartService(name) {
-    return this.post(`/api/service/${encodeURIComponent(name)}/restart`);
+  restartService(name, rig) {
+    return this.post(`/api/service/${encodeURIComponent(name)}/restart`, rig ? { rig } : undefined);
   },
 
   getServiceStatus(name) {
