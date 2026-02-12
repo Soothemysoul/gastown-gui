@@ -137,6 +137,41 @@ describe('Gas Town GUI E2E Tests', () => {
       expect(sidebarExists).toBe(true);
     });
 
+    it('should render service controls with rig data attributes', async () => {
+      await navigateToApp(page);
+      await waitForConnection(page);
+      await sleep(1000);
+
+      const serviceData = await page.evaluate(() => {
+        const items = Array.from(document.querySelectorAll('.service-item'));
+        return items.map(item => ({
+          service: item.dataset.service,
+          buttons: Array.from(item.querySelectorAll('[data-action]')).map(btn => ({
+            action: btn.dataset.action,
+            service: btn.dataset.service,
+            rig: btn.dataset.rig || null,
+          })),
+        }));
+      });
+
+      const witnessItem = serviceData.find(s => s.service === 'witness');
+      const refineryItem = serviceData.find(s => s.service === 'refinery');
+
+      // Witness is running in mock data, so it should have stop/restart buttons with rig
+      if (witnessItem && witnessItem.buttons.length > 0) {
+        witnessItem.buttons.forEach(btn => {
+          expect(btn.rig).toBe('my-rig');
+        });
+      }
+
+      // Refinery is stopped in mock data, so it should have start button with rig
+      if (refineryItem && refineryItem.buttons.length > 0) {
+        refineryItem.buttons.forEach(btn => {
+          expect(btn.rig).toBe('my-rig');
+        });
+      }
+    });
+
     it('should expand and collapse tree nodes', async () => {
       await navigateToApp(page);
 

@@ -574,18 +574,36 @@ describe('Service Management', () => {
     expect(data).toHaveProperty('status');
   });
 
-  it('should start a service', async () => {
+  it('should start a service with rig param', async () => {
     const { status, data, ok } = await api('/api/service/witness/up', {
       method: 'POST',
+      body: JSON.stringify({ rig: 'my-rig' }),
     });
 
     expect(ok).toBe(true);
     expect(status).toBe(200);
     expect(data).toHaveProperty('success', true);
     expect(data.service).toHaveProperty('status', 'running');
+    expect(data.service).toHaveProperty('rig', 'my-rig');
+  });
+
+  it('should reject witness start without rig param', async () => {
+    const { status, data } = await api('/api/service/witness/up', {
+      method: 'POST',
+    });
+
+    expect(status).toBe(400);
+    expect(data).toHaveProperty('error');
+    expect(data.error).toContain('rig');
   });
 
   it('should stop a service', async () => {
+    // Start it first so we can stop it
+    await api('/api/service/witness/up', {
+      method: 'POST',
+      body: JSON.stringify({ rig: 'my-rig' }),
+    });
+
     const { status, data, ok } = await api('/api/service/witness/down', {
       method: 'POST',
     });

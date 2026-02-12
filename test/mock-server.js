@@ -21,9 +21,11 @@ const mockData = {
     uptime: 3600,
     hook: null,
     agents: [
-      { id: 'agent-1', name: 'Mayor', role: 'mayor', status: 'idle' },
-      { id: 'agent-2', name: 'Deacon-1', role: 'deacon', status: 'working', current_task: 'Processing convoy' },
-      { id: 'agent-3', name: 'Polecat-1', role: 'polecat', status: 'idle' },
+      { id: 'agent-1', name: 'Mayor', role: 'mayor', status: 'idle', running: true },
+      { id: 'agent-2', name: 'Deacon-1', role: 'deacon', status: 'working', current_task: 'Processing convoy', running: true },
+      { id: 'agent-3', name: 'Polecat-1', role: 'polecat', status: 'idle', running: false },
+      { id: 'agent-4', name: 'Witness-1', role: 'witness', status: 'idle', running: true, rig: 'my-rig' },
+      { id: 'agent-5', name: 'Refinery-1', role: 'refinery', status: 'idle', running: false, rig: 'my-rig' },
     ],
     convoy_count: 2,
     active_agents: 1,
@@ -545,6 +547,11 @@ app.get('/api/service/:name/status', (req, res) => {
 
 app.post('/api/service/:name/up', (req, res) => {
   const { name } = req.params;
+  const { rig } = req.body || {};
+  const needsRig = ['witness', 'refinery'].includes(name.toLowerCase());
+  if (needsRig && !rig) {
+    return res.status(400).json({ error: `${name} requires a rig parameter` });
+  }
   let service = mockServices.get(name);
   if (!service) {
     service = { name, status: 'running', pid: Math.floor(Math.random() * 10000) + 10000 };
@@ -552,6 +559,7 @@ app.post('/api/service/:name/up', (req, res) => {
     service.status = 'running';
     service.pid = Math.floor(Math.random() * 10000) + 10000;
   }
+  if (rig) service.rig = rig;
   mockServices.set(name, service);
   res.json({ success: true, service });
 });
