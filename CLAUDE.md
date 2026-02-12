@@ -2,183 +2,54 @@
 
 Web GUI for [steveyegge/gastown](https://github.com/steveyegge/gastown) multi-agent orchestrator.
 
-> **KEEP THIS FILE UPDATED!** When adding, renaming, or deleting files, update the Architecture section below.
+## READ THESE ENTIRE DOCUMENTS BEFORE DOING ANYTHING
+
+1. **Read `CODEBASE_DOCUMENTATION.md` NOW** — Complete file inventory. Do NOT grep blindly for files. Read this first so you know where everything lives.
+2. **Read `CLI-COMPATIBILITY.md`** — Which gt/bd commands work, which are broken/remapped. Critical if touching any CLI calls.
+
+> **Update before PR:** If you added/deleted/moved files, update CODEBASE_DOCUMENTATION.md.
+
+## Overview
+
+Browser SPA (vanilla JS, no framework) backed by an Express server that wraps `gt`/`bd` CLI commands as HTTP endpoints. WebSocket streams real-time events from `gt feed`. Published to npm as `gastown-gui`.
+
+## Architecture
+
+- **Entry:** `server.js` — monolith Express server, partially refactored into `server/` modules
+- **Refactored path:** Gateway → Service → Route (see `server/gateways/`, `server/services/`, `server/routes/`)
+- **Legacy endpoints:** Mail, agents, nudge, polecat control, service controls still inline in `server.js`
+- **CLI safety:** All commands use `execFile` (no shell) + `SafeSegment` input validation
+- **Frontend:** Vanilla JS in `js/`, components render via innerHTML, global state in `js/state.js`
+- **Real-time:** WebSocket client in `js/api.js`, server pipes `gt feed --json` output
+- **CLI entry:** `bin/cli.js` — supports `start`, `doctor`, `version`, `help`
 
 ## Commands
 
 ```bash
-npm start          # Start server
-npm run dev        # Dev mode with auto-reload
-npm test           # Run all tests
-npm run test:unit  # Unit tests only
-npm run test:e2e   # E2E tests only
+npm start              # Start server (port 7667)
+npm run dev            # Dev mode with auto-reload
+npm test               # All tests (unit + integration + e2e)
+npm run test:unit      # Unit tests only
+npm run test:e2e       # E2E tests only (needs Puppeteer)
+npm run test:watch     # Watch mode
+npm run test:ui        # Vitest UI
 ```
-
-## Architecture
-
-```
-gastown-gui/
-├── server.js              # Express server + API endpoints wrapping gt CLI
-├── server/                # Backend modules (in progress)
-│   ├── app/
-│   │   └── createApp.js
-│   ├── domain/
-│   │   └── values/
-│   │       ├── AgentPath.js
-│   │       └── SafeSegment.js
-│   ├── infrastructure/
-│   │   ├── CacheRegistry.js
-│   │   ├── CommandRunner.js
-│   │   └── EventBus.js
-│   ├── routes/
-│   │   ├── beads.js
-│   │   ├── formulas.js
-│   │   ├── convoys.js
-│   │   ├── github.js
-│   │   ├── status.js
-│   │   ├── targets.js
-│   │   └── work.js
-│   ├── services/
-│   │   ├── BeadService.js
-│   │   ├── ConvoyService.js
-│   │   ├── FormulaService.js
-│   │   ├── GitHubService.js
-│   │   ├── StatusService.js
-│   │   ├── TargetService.js
-│   │   └── WorkService.js
-│   └── gateways/
-│       ├── BDGateway.js
-│       ├── GitHubGateway.js
-│       ├── GitGateway.js
-│       ├── GTGateway.js
-│       └── TmuxGateway.js
-├── index.html             # Main HTML entry point
-├── package.json           # Dependencies & npm scripts
-├── bin/
-│   └── cli.js             # CLI entry: npx gastown-gui --port 4000
-├── js/
-│   ├── api.js             # Frontend HTTP client for /api/* endpoints
-│   ├── app.js             # App init, routing, event wiring
-│   ├── state.js           # Global reactive state store
-│   ├── components/
-│   │   ├── activity-feed.js   # Real-time event stream display
-│   │   ├── agent-grid.js      # Agent cards with status/actions
-│   │   ├── autocomplete.js    # Search input with suggestions
-│   │   ├── convoy-list.js     # Convoy management panel
-│   │   ├── crew-list.js       # Crew CRUD operations
-│   │   ├── dashboard.js       # Main dashboard layout
-│   │   ├── formula-list.js    # Formula editor/executor
-│   │   ├── health-check.js    # System health display
-│   │   ├── issue-list.js      # Beads/issues list
-│   │   ├── mail-list.js       # Mail inbox/compose
-│   │   ├── modals.js          # Modal dialogs (sling, nudge, etc.)
-│   │   ├── onboarding.js      # First-run setup wizard
-│   │   ├── pr-list.js         # GitHub PR list
-│   │   ├── rig-list.js        # Rig management + polecat spawn/stop
-│   │   ├── sidebar.js         # Navigation sidebar
-│   │   ├── toast.js           # Toast notifications
-│   │   ├── tutorial.js        # Interactive tutorial
-│   │   └── work-list.js       # Work items display
-│   ├── shared/
-│   │   ├── agent-types.js     # Agent type definitions & colors
-│   │   ├── animations.js      # Shared animation helpers
-│   │   ├── beads.js           # Bead domain helpers/constants
-│   │   ├── close-reason.js    # close_reason formatting helpers
-│   │   ├── events.js          # Custom event bus
-│   │   ├── github-repos.js    # Bead/rig → GitHub repo mapping helpers
-│   │   └── timing.js          # Shared timing constants
-│   └── utils/
-│       ├── formatting.js      # Date/number formatters
-│       ├── html.js            # HTML escape/template helpers
-│       ├── performance.js     # Debounce/throttle utilities
-│       └── tooltip.js         # Tooltip positioning
-├── css/
-│   ├── variables.css      # CSS custom properties (colors, spacing)
-│   ├── reset.css          # Browser reset styles
-│   ├── layout.css         # Grid/flex layouts
-│   ├── components.css     # Component-specific styles
-│   └── animations.css     # Transitions & keyframes
-├── test/
-│   ├── setup.js           # Test environment setup
-│   ├── globalSetup.js     # Vitest global setup
-│   ├── mock-server.js     # Mock gt CLI responses
-│   ├── e2e.test.js        # Puppeteer browser tests
-│   ├── integration.test.js # Legacy integration tests
-│   ├── unit/
-│   │   ├── state.test.js      # State management tests
-│   │   ├── cacheRegistry.test.js # CacheRegistry tests
-│   │   ├── commandRunner.test.js  # CommandRunner tests
-│   │   ├── eventBus.test.js       # EventBus tests
-│   │   ├── gtGateway.test.js      # GTGateway tests
-│   │   ├── bdGateway.test.js      # BDGateway tests
-│   │   ├── tmuxGateway.test.js    # TmuxGateway tests
-│   │   ├── githubGateway.test.js  # GitHubGateway tests
-│   │   ├── gitGateway.test.js     # GitGateway tests
-│   │   ├── safeSegment.test.js    # SafeSegment tests
-│   │   ├── agentPath.test.js      # AgentPath tests
-│   │   ├── statusService.test.js  # StatusService tests
-│   │   ├── targetService.test.js  # TargetService tests
-│   │   ├── githubService.test.js  # GitHubService tests
-│   │   ├── convoyService.test.js  # ConvoyService tests
-│   │   ├── statusRoutes.test.js   # Status endpoint tests (real Express app)
-│   │   ├── targetRoutes.test.js   # Target endpoint tests (real Express app)
-│   │   ├── githubRoutes.test.js   # GitHub endpoint tests (real Express app)
-│   │   ├── convoyRoutes.test.js   # Convoy endpoint tests (real Express app)
-│   │   ├── formulaRoutes.test.js  # Formula endpoint tests (real Express app)
-│   │   └── quoteArg.test.js   # Shell injection security tests
-│   └── integration/
-│       ├── endpoints.test.js  # API endpoint tests
-│       ├── websocket.test.js  # WebSocket lifecycle tests
-│       └── cache.test.js      # Cache invalidation tests
-├── vitest.config.js       # Main test config
-├── vitest.unit.config.js  # Unit-only test config
-├── refactoring-analysis/  # Refactor analysis + plans + reports
-│   └── trace/             # Sanitized prompt/trace exports (safe to share)
-└── scripts/
-    └── extract_user_prompts.mjs # Builds sanitized prompt log from local trace dirs
-```
-
-## Key Patterns
-
-**API Pattern:** GUI wraps `gt` CLI commands as HTTP endpoints
-- `GET /api/status` → `gt status --json --fast`
-- `POST /api/sling` → `gt sling`
-- `POST /api/polecat/:rig/:name/start` → `gt polecat spawn`
-- `POST /api/polecat/:rig/:name/stop` → tmux kill
-
-**State:** Global state in `js/state.js`, components subscribe to updates
-
-## Feature Status
-
-| Feature | Status |
-|---------|--------|
-| Convoy Management | ✅ Create/list |
-| Sling Work | ✅ Basic |
-| Beads/Issues | ✅ Full CRUD |
-| Mail | ✅ Full |
-| GitHub Integration | ✅ Full |
-| Polecat Control | ✅ spawn/stop/restart |
-| Crew Management | ✅ Create/List/View |
-| Rig Management | ✅ Create/List/Delete |
-| Formula Editor | ✅ Create/List/Use |
-| Agent Config | ❌ List only (90% missing) |
-
-## When to Use GUI vs CLI
-
-**Use GUI for:**
-- Monitor work progress
-- Create/track convoys
-- View agent output
-- Check system health
-- Send mail/nudges
-
-**Use CLI for:**
-- Agent configuration
-- Advanced polecat management
-- Creating formulas
 
 ## Testing
 
-- Tests cover unit, integration, and e2e layers
-- API endpoints are contract tested via `test/mock-server.js` (real server route coverage in progress)
-- CI runs on Node 18, 20, 22
+- **Vitest** for unit + integration, **Puppeteer** for E2E
+- Unit tests use dependency injection (mock gateways/services)
+- Route tests use real Express app with mocked services
+- Integration tests hit `test/mock-server.js` (mimics gt CLI responses)
+- E2E tests start real server + Chromium browser
+- `npm test` runs everything via `prepublishOnly` before npm publish
+
+## Gotchas
+
+1. **Witness/refinery need rig:** Service start/stop/restart for `witness` and `refinery` require a `rig` parameter in the request body. Mayor/deacon do not. Server returns 400 if missing.
+2. **CLI renames:** Several gt/bd commands were renamed upstream. See `CLI-COMPATIBILITY.md` for the full mapping. Key ones: `formula use` → `formula run --rig`, `bd done` → `bd close`, `bd park` → `bd defer`.
+3. **Port 7667:** Default port via `GASTOWN_PORT` env var. The CLI (`bin/cli.js`) also accepts `--port`.
+4. **No build step:** Frontend is vanilla JS served as static files. No bundler, no transpiler.
+5. **server.js is partially refactored:** Some endpoints moved to `server/routes/`, others still inline (~1700 lines). Don't duplicate — check both before adding endpoints.
+6. **SafeSegment rejects metacharacters:** Any rig/agent name with shell-special chars will be rejected. This is intentional security.
+7. **Mock server must match real server:** When adding/changing endpoints, update both `server.js` (or routes) AND `test/mock-server.js`.

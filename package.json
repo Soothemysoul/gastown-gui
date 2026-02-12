@@ -1,6 +1,6 @@
 {
   "name": "gastown-gui",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Web GUI for Gas Town multi-agent orchestrator - A companion interface for steveyegge/gastown",
   "type": "module",
   "main": "server.js",
@@ -62,6 +62,7 @@
     "bin/",
     "css/",
     "js/",
+    "server/",
     "assets/",
     "index.html",
     "server.js",
