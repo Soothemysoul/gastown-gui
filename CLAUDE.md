@@ -2,10 +2,10 @@
 
 Web GUI for [steveyegge/gastown](https://github.com/steveyegge/gastown) multi-agent orchestrator.
 
-## Read These First
+## READ THESE ENTIRE DOCUMENTS BEFORE DOING ANYTHING
 
-1. **CODEBASE_DOCUMENTATION.md** — File inventory and where things live
-2. **CLI-COMPATIBILITY.md** — Which gt/bd commands work, which are broken/remapped
+1. **Read `CODEBASE_DOCUMENTATION.md` NOW** — Complete file inventory. Do NOT grep blindly for files. Read this first so you know where everything lives.
+2. **Read `CLI-COMPATIBILITY.md`** — Which gt/bd commands work, which are broken/remapped. Critical if touching any CLI calls.
 
 > **Update before PR:** If you added/deleted/moved files, update CODEBASE_DOCUMENTATION.md.
 
