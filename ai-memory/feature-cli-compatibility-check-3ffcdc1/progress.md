@@ -1,0 +1,11 @@
+- [x] Audit GUI commands vs real Gastown CLI
+- [x] Write CLI-COMPATIBILITY.md report
+- [x] Fix BDGateway: done→close, park→defer, release→update --status, reassign→update --assignee
+- [x] Fix GTGateway: escalate -m → -r
+- [x] Fix FormulaService: formula use → formula run, --target → --rig
+- [x] Fix server.js: polecat spawn → sling --rig/--agent
+- [x] Fix server.js: service down → service stop
+- [x] Fix server.js: witness/refinery start require rig param
+- [x] Update BDGateway tests for new commands
+- [x] Update GTGateway tests for -r flag
+- [x] All 303 tests passing

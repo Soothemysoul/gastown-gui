@@ -924,8 +924,8 @@ app.post('/api/polecat/:rig/:name/start', async (req, res) => {
   console.log(`[Agent] Starting ${agentPath}...`);
 
   try {
-    // Use gt polecat spawn to start the agent
-    const result = await executeGT(['polecat', 'spawn', agentPath], { timeout: 30000 });
+    // Use gt sling to start the agent on the target rig
+    const result = await executeGT(['sling', '--rig', rig, '--agent', name], { timeout: 30000 });
 
     if (result.success) {
       broadcast({ type: 'agent_started', data: { rig, name, agentPath } });
@@ -988,8 +988,8 @@ app.post('/api/polecat/:rig/:name/restart', async (req, res) => {
     // Wait a moment for cleanup
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Start the agent
-    const result = await executeGT(['polecat', 'spawn', agentPath], { timeout: 30000 });
+    // Start the agent via gt sling
+    const result = await executeGT(['sling', '--rig', rig, '--agent', name], { timeout: 30000 });
 
     if (result.success) {
       broadcast({ type: 'agent_restarted', data: { rig, name, agentPath } });
@@ -1394,10 +1394,18 @@ app.post('/api/service/:name/up', async (req, res) => {
     return res.status(400).json({ error: `Invalid service: ${name}. Valid services: ${validServices.join(', ')}` });
   }
 
+  const { rig } = req.body || {};
+  const needsRig = ['witness', 'refinery'].includes(name.toLowerCase());
+  if (needsRig && !rig) {
+    return res.status(400).json({ error: `${name} requires a rig parameter` });
+  }
+
   console.log(`[Service] Starting ${name}...`);
 
   try {
-    const result = await executeGT([name, 'start'], { timeout: 30000 });
+    const args = [name, 'start'];
+    if (rig) args.push(rig);
+    const result = await executeGT(args, { timeout: 30000 });
 
     if (result.success) {
       broadcast({ type: 'service_started', data: { service: name } });
@@ -1423,7 +1431,7 @@ app.post('/api/service/:name/down', async (req, res) => {
   console.log(`[Service] Stopping ${name}...`);
 
   try {
-    const result = await executeGT([name, 'down'], { timeout: 10000 });
+    const result = await executeGT([name, 'stop'], { timeout: 10000 });
 
     if (result.success) {
       broadcast({ type: 'service_stopped', data: { service: name } });
@@ -1459,7 +1467,7 @@ app.post('/api/service/:name/restart', async (req, res) => {
   try {
     // Stop first
     try {
-      await executeGT([name, 'down'], { timeout: 10000 });
+      await executeGT([name, 'stop'], { timeout: 10000 });
     } catch {
       // Ignore stop errors
     }

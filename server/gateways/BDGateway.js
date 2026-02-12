@@ -68,26 +68,26 @@ export class BDGateway {
   }
 
   async markDone({ beadId, summary } = {}) {
-    const args = ['done', beadId];
-    if (summary) args.push('-m', summary);
+    const args = ['close', beadId];
+    if (summary) args.push('-r', summary);
     const result = await this.exec(args, { timeoutMs: 30000 });
     return { ...result, raw: (result.stdout || '').trim() };
   }
 
   async park({ beadId, reason } = {}) {
-    const args = ['park', beadId];
-    if (reason) args.push('-m', reason);
+    const args = ['defer', beadId];
+    if (reason) args.push('-r', reason);
     const result = await this.exec(args, { timeoutMs: 30000 });
     return { ...result, raw: (result.stdout || '').trim() };
   }
 
   async release(beadId) {
-    const result = await this.exec(['release', beadId], { timeoutMs: 30000 });
+    const result = await this.exec(['update', beadId, '--status', 'open'], { timeoutMs: 30000 });
     return { ...result, raw: (result.stdout || '').trim() };
   }
 
   async reassign({ beadId, target } = {}) {
-    const result = await this.exec(['reassign', beadId, target], { timeoutMs: 30000 });
+    const result = await this.exec(['update', beadId, '--assignee', target], { timeoutMs: 30000 });
     return { ...result, raw: (result.stdout || '').trim() };
   }
 }

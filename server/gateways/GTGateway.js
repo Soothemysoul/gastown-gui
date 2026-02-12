@@ -70,7 +70,7 @@ export class GTGateway {
     if (!topic) throw new Error('GTGateway.escalate requires topic');
     if (!message) throw new Error('GTGateway.escalate requires message');
 
-    const args = ['escalate', topic, '-s', severity || 'MEDIUM', '-m', message];
+    const args = ['escalate', topic, '-s', severity || 'MEDIUM', '-r', message];
     const result = await this.exec(args, { timeoutMs: 30000 });
     const raw = `${result.stdout || ''}${result.stderr || ''}`.trim();
     return { ...result, raw };
