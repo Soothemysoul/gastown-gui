@@ -90,8 +90,8 @@ export class FormulaService {
   }
 
   async use({ name, target, args: formulaArgs } = {}) {
-    const cmdArgs = ['formula', 'use', name];
-    if (target) cmdArgs.push('--target', target);
+    const cmdArgs = ['formula', 'run', name];
+    if (target) cmdArgs.push('--rig', target);
     if (formulaArgs) cmdArgs.push('--args', formulaArgs);
 
     const result = await this._gt.exec(cmdArgs, { timeoutMs: 30000 });

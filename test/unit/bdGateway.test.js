@@ -78,12 +78,39 @@ describe('BDGateway', () => {
     expect(result.beadId).toBe('gt-abc123');
   });
 
-  it('markDone() adds -m when summary provided', async () => {
+  it('markDone() uses bd close with -r flag', async () => {
     const runner = new FakeRunner();
-    runner.queue({ ok: true, exitCode: 0, stdout: 'done', stderr: '', error: null, signal: null });
+    runner.queue({ ok: true, exitCode: 0, stdout: 'closed', stderr: '', error: null, signal: null });
     const gateway = new BDGateway({ runner, gtRoot: '/tmp/gt' });
 
     await gateway.markDone({ beadId: 'bd-1', summary: 'ok' });
-    expect(runner.calls[0].args).toEqual(['done', 'bd-1', '-m', 'ok']);
+    expect(runner.calls[0].args).toEqual(['close', 'bd-1', '-r', 'ok']);
+  });
+
+  it('park() uses bd defer with -r flag', async () => {
+    const runner = new FakeRunner();
+    runner.queue({ ok: true, exitCode: 0, stdout: 'deferred', stderr: '', error: null, signal: null });
+    const gateway = new BDGateway({ runner, gtRoot: '/tmp/gt' });
+
+    await gateway.park({ beadId: 'bd-2', reason: 'waiting on upstream' });
+    expect(runner.calls[0].args).toEqual(['defer', 'bd-2', '-r', 'waiting on upstream']);
+  });
+
+  it('release() uses bd update --status open', async () => {
+    const runner = new FakeRunner();
+    runner.queue({ ok: true, exitCode: 0, stdout: 'updated', stderr: '', error: null, signal: null });
+    const gateway = new BDGateway({ runner, gtRoot: '/tmp/gt' });
+
+    await gateway.release('bd-3');
+    expect(runner.calls[0].args).toEqual(['update', 'bd-3', '--status', 'open']);
+  });
+
+  it('reassign() uses bd update --assignee', async () => {
+    const runner = new FakeRunner();
+    runner.queue({ ok: true, exitCode: 0, stdout: 'updated', stderr: '', error: null, signal: null });
+    const gateway = new BDGateway({ runner, gtRoot: '/tmp/gt' });
+
+    await gateway.reassign({ beadId: 'bd-4', target: 'mayor' });
+    expect(runner.calls[0].args).toEqual(['update', 'bd-4', '--assignee', 'mayor']);
   });
 });

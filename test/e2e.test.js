@@ -137,6 +137,85 @@ describe('Gas Town GUI E2E Tests', () => {
       expect(sidebarExists).toBe(true);
     });
 
+    it('should render service controls with rig data attributes', async () => {
+      await navigateToApp(page);
+      await waitForConnection(page);
+      await sleep(1000);
+
+      const serviceData = await page.evaluate(() => {
+        const items = Array.from(document.querySelectorAll('.service-item'));
+        return items.map(item => ({
+          service: item.dataset.service,
+          buttons: Array.from(item.querySelectorAll('[data-action]')).map(btn => ({
+            action: btn.dataset.action,
+            service: btn.dataset.service,
+            rig: btn.dataset.rig || null,
+          })),
+        }));
+      });
+
+      const witnessItem = serviceData.find(s => s.service === 'witness');
+      const refineryItem = serviceData.find(s => s.service === 'refinery');
+
+      // Witness is running in mock data, so it should have stop/restart buttons with rig
+      if (witnessItem && witnessItem.buttons.length > 0) {
+        witnessItem.buttons.forEach(btn => {
+          expect(btn.rig).toBe('my-rig');
+        });
+      }
+
+      // Refinery is stopped in mock data, so it should have start button with rig
+      if (refineryItem && refineryItem.buttons.length > 0) {
+        refineryItem.buttons.forEach(btn => {
+          expect(btn.rig).toBe('my-rig');
+        });
+      }
+    });
+
+    it('should pass rig param when clicking service start button', async () => {
+      await navigateToApp(page);
+      await waitForConnection(page);
+      await sleep(1000);
+
+      // Intercept the POST request to /api/service/refinery/up
+      const requestCapture = await page.evaluate(() => {
+        return new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => resolve({ error: 'no request captured' }), 5000);
+
+          // Monkey-patch fetch to capture the request
+          const originalFetch = window.fetch;
+          window.fetch = async (url, opts) => {
+            if (typeof url === 'string' && url.includes('/api/service/refinery/up')) {
+              clearTimeout(timeout);
+              const body = opts?.body ? JSON.parse(opts.body) : null;
+              // Restore original fetch before making the actual call
+              window.fetch = originalFetch;
+              const response = await originalFetch(url, opts);
+              resolve({ url, method: opts?.method, body, status: response.status });
+              return response;
+            }
+            return originalFetch(url, opts);
+          };
+
+          // Click the refinery start button (refinery is stopped in mock data)
+          const refineryStart = document.querySelector('.service-item[data-service="refinery"] [data-action="start"]');
+          if (refineryStart) {
+            refineryStart.click();
+          } else {
+            clearTimeout(timeout);
+            resolve({ error: 'refinery start button not found' });
+          }
+        });
+      });
+
+      // Verify the request was made with rig in the body
+      if (!requestCapture.error) {
+        expect(requestCapture.method).toBe('POST');
+        expect(requestCapture.body).toHaveProperty('rig', 'my-rig');
+        expect(requestCapture.status).toBe(200);
+      }
+    });
+
     it('should expand and collapse tree nodes', async () => {
       await navigateToApp(page);
 

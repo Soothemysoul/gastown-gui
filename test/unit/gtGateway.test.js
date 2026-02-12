@@ -98,7 +98,7 @@ describe('GTGateway', () => {
       message: 'Blocked',
     });
 
-    expect(runner.calls[0].args).toEqual(['escalate', 'Convoy abc needs attention', '-s', 'HIGH', '-m', 'Blocked']);
+    expect(runner.calls[0].args).toEqual(['escalate', 'Convoy abc needs attention', '-s', 'HIGH', '-r', 'Blocked']);
     expect(result.raw).toBe('sent');
   });
 });
