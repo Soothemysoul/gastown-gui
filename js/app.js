@@ -24,6 +24,26 @@ import { showToast } from './components/toast.js';
 import { initModals } from './components/modals.js';
 import { startTutorial, shouldShowTutorial } from './components/tutorial.js';
 import { startOnboarding, shouldShowOnboarding, resetOnboarding } from './components/onboarding.js';
+import {
+  CREW_REFRESH,
+  DASHBOARD_REFRESH,
+  MAIL_DETAIL,
+  MAIL_REFRESH,
+  ONBOARDING_COMPLETE,
+  POLECAT_ACTION,
+  RIGS_REFRESH,
+  STATUS_REFRESH,
+  WORK_REFRESH,
+} from './shared/events.js';
+
+const ONBOARDING_START_DELAY_MS = 500;
+const TUTORIAL_START_DELAY_MS = 1000;
+const BACKGROUND_PRELOAD_DELAY_MS = 500;
+const CONNECTION_ERROR_TOAST_DURATION_MS = 10000;
+const REFRESH_TOAST_DURATION_MS = 1000;
+const MAYOR_OUTPUT_POLL_INTERVAL_MS = 2000;
+const MAYOR_OUTPUT_TAIL_LINES = 80;
+const MAYOR_MESSAGE_PREVIEW_LENGTH = 40;
 
 // DOM Elements
 const elements = {
@@ -125,50 +145,50 @@ async function init() {
   // Check for first-time users - show onboarding wizard
   const showOnboarding = await shouldShowOnboarding();
   if (showOnboarding) {
-    setTimeout(() => startOnboarding(), 500);
+    setTimeout(() => startOnboarding(), ONBOARDING_START_DELAY_MS);
   } else if (shouldShowTutorial()) {
     // Show tutorial only if onboarding was already completed
-    setTimeout(() => startTutorial(), 1000);
+    setTimeout(() => startTutorial(), TUTORIAL_START_DELAY_MS);
   }
 
   // Listen for onboarding completion
-  document.addEventListener('onboarding:complete', () => {
+  document.addEventListener(ONBOARDING_COMPLETE, () => {
     loadInitialData();
   });
 
   // Listen for status refresh (from service controls)
-  document.addEventListener('status:refresh', () => {
+  document.addEventListener(STATUS_REFRESH, () => {
     loadInitialData();
   });
 
   // Listen for dashboard refresh
-  document.addEventListener('dashboard:refresh', () => {
+  document.addEventListener(DASHBOARD_REFRESH, () => {
     loadDashboard();
   });
 
   // Listen for rigs refresh (from agent controls)
-  document.addEventListener('rigs:refresh', () => {
+  document.addEventListener(RIGS_REFRESH, () => {
     loadRigs();
   });
 
   // Listen for work refresh (from work actions)
-  document.addEventListener('work:refresh', () => {
+  document.addEventListener(WORK_REFRESH, () => {
     loadWork();
   });
 
   // Listen for mail refresh (from read/unread actions)
-  document.addEventListener('mail:refresh', () => {
+  document.addEventListener(MAIL_REFRESH, () => {
     loadMail();
   });
 
   // Handle mail detail modal
-  document.addEventListener('mail:detail', (e) => {
+  document.addEventListener(MAIL_DETAIL, (e) => {
     const { mailId, mail } = e.detail;
     showMailDetailModal(mail);
   });
 
   // Handle polecat start/stop/restart actions
-  document.addEventListener('polecat:action', async (e) => {
+  document.addEventListener(POLECAT_ACTION, async (e) => {
     const { rig, name, action, agentId } = e.detail;
     try {
       showToast(`${action === 'start' ? 'Starting' : action === 'stop' ? 'Stopping' : 'Restarting'} polecat...`, 'info');
@@ -185,7 +205,7 @@ async function init() {
       }
 
       // Refresh the agents list
-      document.dispatchEvent(new CustomEvent('status:refresh'));
+      document.dispatchEvent(new CustomEvent(STATUS_REFRESH));
     } catch (err) {
       console.error('Polecat action failed:', err);
       showToast(`Failed to ${action} polecat: ${err.message}`, 'error');
@@ -253,9 +273,6 @@ function connectWebSocket() {
     console.log('[WS] Disconnected');
     updateConnectionStatus('disconnected');
     showToast('Disconnected from server', 'warning');
-
-    // Attempt reconnect after 5 seconds
-    setTimeout(connectWebSocket, 5000);
   };
 
   ws.onerror = (error) => {
@@ -398,7 +415,7 @@ async function loadInitialData() {
   } catch (err) {
     console.error('[App] Failed to load initial data:', err);
     elements.statusMessage.textContent = 'Cannot connect to server';
-    showToast('Cannot connect - is the server running? Check terminal for the correct URL.', 'error', 10000);
+    showToast('Cannot connect - is the server running? Check terminal for the correct URL.', 'error', CONNECTION_ERROR_TOAST_DURATION_MS);
   }
 }
 
@@ -406,7 +423,7 @@ async function loadInitialData() {
 async function preloadBackgroundData() {
   try {
     // Wait 500ms to let initial UI settle, then preload in background
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, BACKGROUND_PRELOAD_DELAY_MS));
 
     console.log('[App] Preloading background data...');
 
@@ -796,7 +813,7 @@ function setupKeyboardShortcuts() {
         case 'r':
           e.preventDefault();
           loadInitialData();
-          showToast('Refreshing...', 'info', 1000);
+          showToast('Refreshing...', 'info', REFRESH_TOAST_DURATION_MS);
           break;
         case 's':
           e.preventDefault();
@@ -947,7 +964,7 @@ function setupThemeToggle() {
 // Refresh button
 document.getElementById('refresh-btn').addEventListener('click', () => {
   loadInitialData();
-  showToast('Refreshing...', 'info', 1000);
+  showToast('Refreshing...', 'info', REFRESH_TOAST_DURATION_MS);
 });
 
 // Crew management buttons
@@ -957,11 +974,11 @@ document.getElementById('new-crew-btn')?.addEventListener('click', () => {
 
 document.getElementById('crew-refresh')?.addEventListener('click', () => {
   loadCrews();
-  showToast('Refreshing crews...', 'info', 1000);
+  showToast('Refreshing crews...', 'info', REFRESH_TOAST_DURATION_MS);
 });
 
 // Crew refresh event (triggered by crew-list.js after add/remove)
-document.addEventListener('crew:refresh', () => {
+document.addEventListener(CREW_REFRESH, () => {
   loadCrews();
 });
 
@@ -979,7 +996,7 @@ async function sendToMayor() {
   try {
     const result = await api.nudge('mayor', message);
     if (result.success) {
-      const truncatedMsg = message.substring(0, 40) + (message.length > 40 ? '...' : '');
+      const truncatedMsg = message.substring(0, MAYOR_MESSAGE_PREVIEW_LENGTH) + (message.length > MAYOR_MESSAGE_PREVIEW_LENGTH ? '...' : '');
       if (result.wasAutoStarted) {
         showToast('Mayor auto-started. Sent: ' + truncatedMsg, 'success');
       } else {
@@ -1047,7 +1064,7 @@ let mayorOutputRefreshInterval = null;
 
 async function refreshMayorOutput() {
   try {
-    const data = await api.getMayorOutput(80);
+    const data = await api.getMayorOutput(MAYOR_OUTPUT_TAIL_LINES);
     if (data.output) {
       // Format output with some highlighting
       let output = data.output;
@@ -1071,7 +1088,7 @@ function showMayorOutput() {
   mayorOutputPanel.style.display = 'block';
   refreshMayorOutput();
   // Auto-refresh every 2 seconds while open
-  mayorOutputRefreshInterval = setInterval(refreshMayorOutput, 2000);
+  mayorOutputRefreshInterval = setInterval(refreshMayorOutput, MAYOR_OUTPUT_POLL_INTERVAL_MS);
 }
 
 function hideMayorOutput() {

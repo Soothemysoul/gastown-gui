@@ -8,7 +8,10 @@ import { AGENT_TYPES, getAgentType, getAgentConfig, formatAgentName } from '../s
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { escapeHtml, truncate } from '../utils/html.js';
+import { MAIL_DETAIL, MAIL_READ, MAIL_REFRESH } from '../shared/events.js';
+import { TIME_MS } from '../utils/formatting.js';
 import { debounce } from '../utils/performance.js';
+import { getStaggerClass } from '../shared/animations.js';
 
 // Priority icons and colors
 const PRIORITY_CONFIG = {
@@ -176,7 +179,7 @@ async function handleToggleRead(mailId, markAsRead, btn) {
     if (result.success) {
       showToast(`Mail marked as ${markAsRead ? 'read' : 'unread'}`, 'success');
       // Trigger mail refresh
-      document.dispatchEvent(new CustomEvent('mail:refresh'));
+      document.dispatchEvent(new CustomEvent(MAIL_REFRESH));
     } else {
       showToast(`Failed: ${result.error}`, 'error');
     }
@@ -316,7 +319,7 @@ function renderMailItem(mail, index) {
        </span>`;
 
   return `
-    <div class="mail-item ${isUnread ? 'unread' : ''} ${isFeedMail ? 'feed-mail' : ''} animate-spawn stagger-${Math.min(index, 6)}"
+    <div class="mail-item ${isUnread ? 'unread' : ''} ${isFeedMail ? 'feed-mail' : ''} animate-spawn ${getStaggerClass(index)}"
          data-mail-id="${mail.id}"
          style="--from-color: ${fromConfig.color}">
       <div class="mail-status">
@@ -378,11 +381,11 @@ function showMailDetail(mailId, mail) {
   if (!mail) return;
 
   // Mark as read
-  const event = new CustomEvent('mail:read', { detail: { mailId } });
+  const event = new CustomEvent(MAIL_READ, { detail: { mailId } });
   document.dispatchEvent(event);
 
   // Show modal
-  const modalEvent = new CustomEvent('mail:detail', {
+  const modalEvent = new CustomEvent(MAIL_DETAIL, {
     detail: { mailId, mail }
   });
   document.dispatchEvent(modalEvent);
@@ -404,7 +407,7 @@ function formatTime(timestamp) {
   }
 
   // This week - show day
-  if (diff < 7 * 86400000) {
+  if (diff < TIME_MS.WEEK) {
     return date.toLocaleDateString([], { weekday: 'short' });
   }
 

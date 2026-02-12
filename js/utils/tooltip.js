@@ -4,8 +4,12 @@
  * Positions tooltips properly using fixed positioning to avoid z-index issues.
  */
 
-// Track current tooltip element
-let currentTooltip = null;
+const TOOLTIP_POSITION_STYLE_ID = 'tooltip-position-style';
+const EDGE_MARGIN_PX = 10;
+const TOOLTIP_APPROX_HEIGHT_PX = 60;
+const TOOLTIP_MAX_WIDTH_PX = 200;
+const DYNAMIC_TOOLTIP_ID = 'dynamic-tooltip';
+const DYNAMIC_TOOLTIP_MAX_WIDTH_PX = 280;
 
 /**
  * Initialize tooltip positioning for all [data-tooltip] elements
@@ -23,7 +27,6 @@ function handleMouseOver(e) {
   const el = e.target.closest('[data-tooltip]');
   if (!el || !el.dataset.tooltip) return;
 
-  currentTooltip = el;
   positionTooltip(el);
 }
 
@@ -33,8 +36,6 @@ function handleMouseOver(e) {
 function handleMouseOut(e) {
   const el = e.target.closest('[data-tooltip]');
   if (!el) return;
-
-  currentTooltip = null;
 }
 
 /**
@@ -42,39 +43,35 @@ function handleMouseOut(e) {
  */
 function positionTooltip(el) {
   const rect = el.getBoundingClientRect();
-  const tooltip = el.querySelector('::after');
 
   // Calculate best position
   const spaceAbove = rect.top;
   const spaceBelow = window.innerHeight - rect.bottom;
-  const spaceLeft = rect.left;
-  const spaceRight = window.innerWidth - rect.right;
 
   // Create a style element for this specific tooltip position
-  const styleId = 'tooltip-position-style';
-  let styleEl = document.getElementById(styleId);
+  let styleEl = document.getElementById(TOOLTIP_POSITION_STYLE_ID);
   if (!styleEl) {
     styleEl = document.createElement('style');
-    styleEl.id = styleId;
+    styleEl.id = TOOLTIP_POSITION_STYLE_ID;
     document.head.appendChild(styleEl);
   }
 
   // Calculate tooltip position (prefer above, fall back to below)
   let top, left;
-  const tooltipHeight = 60; // Approximate height
-  const tooltipWidth = 200; // Max width from CSS
+  const tooltipHeight = TOOLTIP_APPROX_HEIGHT_PX; // Approximate height
+  const tooltipWidth = TOOLTIP_MAX_WIDTH_PX; // Max width from CSS
 
-  if (spaceAbove > tooltipHeight + 10) {
+  if (spaceAbove > tooltipHeight + EDGE_MARGIN_PX) {
     // Position above
-    top = rect.top - tooltipHeight - 10;
+    top = rect.top - tooltipHeight - EDGE_MARGIN_PX;
   } else {
     // Position below
-    top = rect.bottom + 10;
+    top = rect.bottom + EDGE_MARGIN_PX;
   }
 
   // Center horizontally, but keep on screen
   left = rect.left + (rect.width / 2) - (tooltipWidth / 2);
-  left = Math.max(10, Math.min(left, window.innerWidth - tooltipWidth - 10));
+  left = Math.max(EDGE_MARGIN_PX, Math.min(left, window.innerWidth - tooltipWidth - EDGE_MARGIN_PX));
 
   // Apply position via CSS custom properties
   el.style.setProperty('--tooltip-top', `${top}px`);
@@ -98,11 +95,11 @@ function positionTooltip(el) {
  * Manually show a tooltip at a specific position
  */
 export function showTooltipAt(text, x, y) {
-  const existing = document.getElementById('dynamic-tooltip');
+  const existing = document.getElementById(DYNAMIC_TOOLTIP_ID);
   if (existing) existing.remove();
 
   const tooltip = document.createElement('div');
-  tooltip.id = 'dynamic-tooltip';
+  tooltip.id = DYNAMIC_TOOLTIP_ID;
   tooltip.className = 'dynamic-tooltip';
   tooltip.textContent = text;
   tooltip.style.cssText = `
@@ -115,9 +112,9 @@ export function showTooltipAt(text, x, y) {
     border: 1px solid var(--border-default);
     border-radius: 6px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    z-index: 9999;
+    z-index: var(--z-tooltip);
     pointer-events: none;
-    max-width: 280px;
+    max-width: ${DYNAMIC_TOOLTIP_MAX_WIDTH_PX}px;
     animation: fadeIn 0.15s ease;
   `;
 
@@ -126,10 +123,10 @@ export function showTooltipAt(text, x, y) {
   // Adjust position if off-screen
   const rect = tooltip.getBoundingClientRect();
   if (rect.right > window.innerWidth) {
-    tooltip.style.left = `${window.innerWidth - rect.width - 10}px`;
+    tooltip.style.left = `${window.innerWidth - rect.width - EDGE_MARGIN_PX}px`;
   }
   if (rect.bottom > window.innerHeight) {
-    tooltip.style.top = `${y - rect.height - 10}px`;
+    tooltip.style.top = `${y - rect.height - EDGE_MARGIN_PX}px`;
   }
 
   return tooltip;
@@ -139,6 +136,6 @@ export function showTooltipAt(text, x, y) {
  * Hide dynamic tooltip
  */
 export function hideTooltip() {
-  const existing = document.getElementById('dynamic-tooltip');
+  const existing = document.getElementById(DYNAMIC_TOOLTIP_ID);
   if (existing) existing.remove();
 }

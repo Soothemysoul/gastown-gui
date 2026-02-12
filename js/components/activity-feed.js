@@ -5,6 +5,8 @@
  */
 
 import { AGENT_TYPES, getAgentConfig, formatAgentName } from '../shared/agent-types.js';
+import { escapeHtml, truncate } from '../utils/html.js';
+import { formatActivityFeedTime } from '../utils/formatting.js';
 
 // Event type configuration (uses shared agent colors where applicable)
 const EVENT_CONFIG = {
@@ -128,7 +130,7 @@ function renderFeedItem(event, index, isNew) {
       <div class="feed-content">
         <div class="feed-header">
           <span class="feed-type">${config.label}</span>
-          <span class="feed-time">${formatTime(event.timestamp)}</span>
+          <span class="feed-time">${formatActivityFeedTime(event.timestamp)}</span>
         </div>
         <div class="feed-message">${formatMessage(event)}</div>
         ${event.details ? `
@@ -198,47 +200,4 @@ function formatAgentBadge(agentPath, role = null) {
   const config = getAgentConfig(agentPath, role);
   const name = formatAgentName(agentPath);
   return `<span class="feed-agent" style="color: ${config.color}"><span class="material-icons" style="font-size: 12px">${config.icon}</span> ${escapeHtml(name)}</span>`;
-}
-
-/**
- * Format timestamp for display
- */
-function formatTime(timestamp) {
-  if (!timestamp) return '';
-
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diff = now - date;
-
-  // Less than 1 minute
-  if (diff < 60000) {
-    const seconds = Math.floor(diff / 1000);
-    return seconds <= 5 ? 'Just now' : `${seconds}s ago`;
-  }
-
-  // Less than 1 hour
-  if (diff < 3600000) {
-    return `${Math.floor(diff / 60000)}m ago`;
-  }
-
-  // Less than 24 hours - show time
-  if (diff < 86400000) {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
-
-  // Otherwise show date
-  return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-}
-
-// Utility functions
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-function truncate(str, length) {
-  if (!str) return '';
-  return str.length > length ? str.slice(0, length) + '...' : str;
 }

@@ -7,8 +7,7 @@
 import puppeteer from 'puppeteer';
 
 // Test configuration
-// Use 5678 by default to avoid port conflicts with Claude orchestrator (3000)
-// and to keep production server port (5555) free
+// Use TEST_URL (written by globalSetup) when available; otherwise fall back to PORT.
 const PORT = process.env.PORT || 5678;
 export const CONFIG = {
   baseUrl: process.env.TEST_URL || `http://localhost:${PORT}`,
@@ -23,6 +22,23 @@ export const CONFIG = {
 
 // Global browser instance
 let browser = null;
+
+function attachBrowserErrorTracking(page) {
+  const consoleErrors = [];
+  const pageErrors = [];
+
+  page.on('console', (msg) => {
+    if (msg.type() !== 'error') return;
+    consoleErrors.push(msg.text());
+  });
+
+  page.on('pageerror', (err) => {
+    pageErrors.push(err?.message || String(err));
+  });
+
+  // Attach for tests to read (Puppeteer Page is a plain JS object).
+  page.__gastownTestErrors = { consoleErrors, pageErrors };
+}
 
 /**
  * Launch browser for tests
@@ -58,6 +74,7 @@ export async function closeBrowser() {
 export async function createPage() {
   const b = await launchBrowser();
   const page = await b.newPage();
+  attachBrowserErrorTracking(page);
 
   await page.evaluateOnNewDocument(() => {
     localStorage.setItem('gastown-onboarding-complete', 'true');
@@ -173,4 +190,18 @@ export function assert(condition, message) {
  */
 export function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+export function getBrowserErrors(page, { allowConsoleErrorPatterns = [] } = {}) {
+  const data = page?.__gastownTestErrors || { consoleErrors: [], pageErrors: [] };
+  const filteredConsoleErrors = data.consoleErrors.filter((text) =>
+    !allowConsoleErrorPatterns.some((re) => re.test(text))
+  );
+  return { consoleErrors: filteredConsoleErrors, pageErrors: data.pageErrors };
+}
+
+export function clearBrowserErrors(page) {
+  if (!page?.__gastownTestErrors) return;
+  page.__gastownTestErrors.consoleErrors.length = 0;
+  page.__gastownTestErrors.pageErrors.length = 0;
 }

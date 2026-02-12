@@ -7,6 +7,8 @@
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { formatRelativeTime } from '../utils/formatting.js';
+import { escapeHtml } from '../utils/html.js';
+import { getStaggerClass } from '../shared/animations.js';
 
 let container = null;
 let issues = [];
@@ -98,7 +100,7 @@ function renderIssues() {
  */
 function createIssueCard(issue, index) {
   const card = document.createElement('div');
-  card.className = `issue-card issue-${issue.state} animate-spawn stagger-${Math.min(index, 6)}`;
+  card.className = `issue-card issue-${issue.state} animate-spawn ${getStaggerClass(index)}`;
   card.dataset.issueNumber = issue.number;
   card.dataset.repo = issue.repo;
 
@@ -174,14 +176,4 @@ function openSlingModal(issue) {
     document.getElementById('modal-overlay').classList.remove('hidden');
     modal.classList.remove('hidden');
   }
-}
-
-/**
- * Escape HTML to prevent XSS
- */
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
 }

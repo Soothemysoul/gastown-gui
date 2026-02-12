@@ -6,6 +6,8 @@
  */
 
 import { debounce as debounceFn } from '../utils/performance.js';
+import { escapeHtml } from '../utils/html.js';
+import { TIMING_MS } from '../shared/timing.js';
 
 /**
  * Initialize autocomplete on an input element
@@ -87,7 +89,7 @@ export function initAutocomplete(input, options) {
 
   // Hide on blur (with delay for click handling)
   input.addEventListener('blur', () => {
-    setTimeout(hideDropdown, 200);
+    setTimeout(hideDropdown, TIMING_MS.DROPDOWN_HIDE_DELAY);
   });
 
   // Click on input shows dropdown if we have suggestions
@@ -202,12 +204,4 @@ export function renderAgentItem(item) {
       <span class="agent-status status-${statusClass}">${statusClass}</span>
     </div>
   `;
-}
-
-// Utility function
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
 }

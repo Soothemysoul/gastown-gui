@@ -8,11 +8,7 @@ export default defineConfig({
 
     // Run tests sequentially (browser tests can conflict)
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: true,
-      },
-    },
+    fileParallelism: false,
 
     // Include test files
     include: ['test/**/*.test.js'],

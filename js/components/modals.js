@@ -8,8 +8,29 @@ import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { initAutocomplete, renderBeadItem, renderAgentItem } from './autocomplete.js';
 import { state } from '../state.js';
-import { escapeHtml, escapeAttr } from '../utils/html.js';
+import { escapeHtml, escapeAttr, capitalize } from '../utils/html.js';
 import { debounce } from '../utils/performance.js';
+import { getBeadPriority } from '../shared/beads.js';
+import { parseCloseReason } from '../shared/close-reason.js';
+import { TIMING_MS } from '../shared/timing.js';
+import {
+  AGENT_DETAIL,
+  AGENT_NUDGE,
+  AGENT_PEEK,
+  BEAD_CREATED,
+  BEAD_DETAIL,
+  BEAD_SLING,
+  CONVOY_CREATED,
+  CONVOY_DETAIL,
+  CONVOY_ESCALATE,
+  CONVOY_ESCALATED,
+  MAIL_DETAIL,
+  MAIL_REPLY,
+  MODAL_CLOSE,
+  MODAL_SHOW,
+  RIGS_REFRESH,
+  WORK_SLUNG,
+} from '../shared/events.js';
 
 // Modal registry
 const modals = new Map();
@@ -20,30 +41,9 @@ let overlay = null;
 // Peek modal state
 let peekAutoRefreshInterval = null;
 let currentPeekAgentId = null;
+const PEEK_AUTO_REFRESH_INTERVAL_MS = 2000;
 
-// GitHub repo mapping for known rigs (same as work-list.js)
-// Configure this mapping to link beads/PRs to your GitHub repos
-const GITHUB_REPOS = {
-  // Example: 'my-project': 'myorg/my-project',
-};
-
-function getGitHubRepoForBead(beadId) {
-  if (!beadId) return null;
-  const prefixMatch = beadId.match(/^([a-z]+)-/i);
-  if (prefixMatch) {
-    const prefix = prefixMatch[1].toLowerCase();
-    if (GITHUB_REPOS[prefix]) return GITHUB_REPOS[prefix];
-  }
-  for (const [key, repo] of Object.entries(GITHUB_REPOS)) {
-    if (repo && beadId.toLowerCase().includes(key.toLowerCase())) {
-      return repo;
-    }
-  }
-  for (const repo of Object.values(GITHUB_REPOS)) {
-    if (repo) return repo;
-  }
-  return null;
-}
+// GitHub repo mapping is configured in `js/shared/github-repos.js`.
 
 /**
  * Initialize modals system
@@ -123,38 +123,38 @@ export function initModals() {
   });
 
   // Listen for custom modal events
-  document.addEventListener('convoy:detail', (e) => {
+  document.addEventListener(CONVOY_DETAIL, (e) => {
     showConvoyDetailModal(e.detail.convoyId);
   });
 
-  document.addEventListener('agent:detail', (e) => {
+  document.addEventListener(AGENT_DETAIL, (e) => {
     showAgentDetailModal(e.detail.agentId);
   });
 
-  document.addEventListener('agent:nudge', (e) => {
+  document.addEventListener(AGENT_NUDGE, (e) => {
     showNudgeModal(e.detail.agentId);
   });
 
-  document.addEventListener('mail:detail', (e) => {
+  document.addEventListener(MAIL_DETAIL, (e) => {
     showMailDetailModal(e.detail.mailId, e.detail.mail);
   });
 
-  document.addEventListener('convoy:escalate', (e) => {
+  document.addEventListener(CONVOY_ESCALATE, (e) => {
     showEscalationModal(e.detail.convoyId, e.detail.convoyName);
   });
 
-  document.addEventListener('mail:reply', (e) => {
+  document.addEventListener(MAIL_REPLY, (e) => {
     openModal('mail-compose', {
       replyTo: e.detail.mail.from,
       subject: e.detail.mail.subject,
     });
   });
 
-  document.addEventListener('bead:detail', (e) => {
+  document.addEventListener(BEAD_DETAIL, (e) => {
     showBeadDetailModal(e.detail.beadId, e.detail.bead);
   });
 
-  document.addEventListener('agent:peek', (e) => {
+  document.addEventListener(AGENT_PEEK, (e) => {
     showPeekModal(e.detail.agentId);
   });
 
@@ -165,11 +165,11 @@ export function initModals() {
   });
 
   // Generic dynamic modal handler (event-driven)
-  document.addEventListener('modal:show', (e) => {
+  document.addEventListener(MODAL_SHOW, (e) => {
     showEventDrivenModal(e.detail);
   });
 
-  document.addEventListener('modal:close', () => {
+  document.addEventListener(MODAL_CLOSE, () => {
     closeDynamicModal();
   });
 }
@@ -225,7 +225,7 @@ function showEventDrivenModal(options) {
   // Focus first input
   const firstInput = dynamicModal.querySelector('input, textarea, select');
   if (firstInput) {
-    setTimeout(() => firstInput.focus(), 100);
+    setTimeout(() => firstInput.focus(), TIMING_MS.FOCUS_DELAY);
   }
 }
 
@@ -271,7 +271,7 @@ export function openModal(modalId, data = {}) {
   // Focus first input
   const firstInput = config.element.querySelector('input, textarea, select');
   if (firstInput) {
-    setTimeout(() => firstInput.focus(), 100);
+    setTimeout(() => firstInput.focus(), TIMING_MS.FOCUS_DELAY);
   }
 }
 
@@ -352,7 +352,7 @@ async function handleNewConvoySubmit(form) {
     closeAllModals();
 
     // Dispatch event for refresh
-    document.dispatchEvent(new CustomEvent('convoy:created', { detail: result }));
+    document.dispatchEvent(new CustomEvent(CONVOY_CREATED, { detail: result }));
   } catch (err) {
     showToast(`Failed to create convoy: ${err.message}`, 'error');
   } finally {
@@ -399,7 +399,7 @@ async function handleNewBeadSubmit(form) {
       showToast(`Work item created: ${result.bead_id}`, 'success');
 
       // Dispatch event for UI refresh
-      document.dispatchEvent(new CustomEvent('bead:created', { detail: result }));
+      document.dispatchEvent(new CustomEvent(BEAD_CREATED, { detail: result }));
 
       // If "sling now" was checked, open sling modal with bead pre-filled
       if (slingNow && result.bead_id) {
@@ -595,7 +595,7 @@ async function handleSlingSubmit(form) {
   api.sling(bead, target, { molecule, quality }).then(result => {
     showToast(`Work slung: ${bead} → ${target}`, 'success');
     // Dispatch event
-    document.dispatchEvent(new CustomEvent('work:slung', { detail: result }));
+    document.dispatchEvent(new CustomEvent(WORK_SLUNG, { detail: result }));
   }).catch(err => {
     // For sling errors, we can't show the fancy error in the modal (it's closed)
     // So just show a toast with the error message
@@ -769,10 +769,6 @@ async function populateRecipientDropdown(modalElement, preselect = null) {
   } catch (err) {
     console.error('[Modals] Failed to populate recipients:', err);
   }
-}
-
-function capitalize(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 // === Help Modal ===
@@ -973,7 +969,7 @@ async function handleNewRigSubmit(form) {
     if (result.success) {
       showToast(`Rig "${name}" added successfully`, 'success');
       // Trigger refresh
-      document.dispatchEvent(new CustomEvent('rigs:refresh'));
+      document.dispatchEvent(new CustomEvent(RIGS_REFRESH));
     } else {
       showToast(`Failed to add rig: ${result.error}`, 'error');
     }
@@ -1185,13 +1181,16 @@ function showMailDetailModal(mailId, mail) {
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="document.dispatchEvent(new CustomEvent('mail:reply', { detail: { mail: ${JSON.stringify(mail)} } }))">
+      <button class="btn btn-secondary" data-action="reply">
         <span class="material-icons">reply</span>
         Reply
       </button>
     </div>
   `;
-  showDynamicModal('mail-detail', content);
+  const modal = showDynamicModal('mail-detail', content);
+  modal.querySelector('[data-action="reply"]')?.addEventListener('click', () => {
+    document.dispatchEvent(new CustomEvent(MAIL_REPLY, { detail: { mail } }));
+  });
 }
 
 // === Bead Detail Modal ===
@@ -1226,6 +1225,7 @@ function showBeadDetailModal(beadId, bead) {
   const closeReasonHtml = bead.close_reason
     ? parseCloseReasonForModal(bead.close_reason, beadId)
     : '';
+  const priority = getBeadPriority(bead);
 
   const content = `
     <div class="modal-header bead-detail-header">
@@ -1255,7 +1255,7 @@ function showBeadDetailModal(beadId, bead) {
         </div>
         <div class="meta-row">
           <span class="meta-label">Priority:</span>
-          <span class="priority-badge priority-${bead.priority || 2}">P${bead.priority || 2}</span>
+          <span class="priority-badge priority-${priority}">P${priority}</span>
         </div>
         <div class="meta-row">
           <span class="meta-label">Status:</span>
@@ -1338,7 +1338,7 @@ function showBeadDetailModal(beadId, bead) {
   const slingBtn = modal.querySelector('.sling-btn');
   if (slingBtn) {
     slingBtn.addEventListener('click', () => {
-      document.dispatchEvent(new CustomEvent('bead:sling', { detail: { beadId } }));
+      document.dispatchEvent(new CustomEvent(BEAD_SLING, { detail: { beadId } }));
       closeAllModals();
     });
   }
@@ -1432,35 +1432,39 @@ async function fetchBeadLinks(beadId, modal) {
 function parseCloseReasonForModal(text, beadId) {
   if (!text) return '';
 
-  let result = escapeHtml(text);
-  const repo = getGitHubRepoForBead(beadId);
+  let result = parseCloseReason(text, beadId);
 
-  // Replace commit references with styled links
-  result = result.replace(/commit\s+([a-f0-9]{7,40})/gi, (match, hash) => {
-    if (repo) {
-      const url = `https://github.com/${repo}/commit/${hash}`;
-      return `<a href="${url}" target="_blank" class="commit-link code-link" data-commit="${hash}" title="View on GitHub">
-        <span class="material-icons">commit</span>${hash.substring(0, 7)}
-      </a>`;
-    } else {
+  // Upgrade commit links to modal-specific styling (icon + short hash)
+  result = result.replace(/<a\b[^>]*\bdata-commit="([^"]+)"[^>]*>.*?<\/a>/gi, (match, hash) => {
+    const href = match.match(/href="([^"]+)"/i)?.[1] ?? '#';
+    const shortHash = String(hash).substring(0, 7);
+    const isCopy = href === '#' || /\bcommit-copy\b/i.test(match);
+
+    if (isCopy) {
       return `<a href="#" class="commit-copy code-link" data-commit="${hash}" title="Click to copy">
-        <span class="material-icons">commit</span>${hash.substring(0, 7)}
+        <span class="material-icons">commit</span>${shortHash}
       </a>`;
     }
+
+    return `<a href="${href}" target="_blank" class="commit-link code-link" data-commit="${hash}" title="View on GitHub">
+        <span class="material-icons">commit</span>${shortHash}
+      </a>`;
   });
 
-  // Replace PR references
-  result = result.replace(/PR\s*#?(\d+)/gi, (match, num) => {
-    if (repo) {
-      const url = `https://github.com/${repo}/pull/${num}`;
-      return `<a href="${url}" target="_blank" class="pr-link code-link" data-pr="${num}" title="View on GitHub">
-        <span class="material-icons">merge</span>PR #${num}
-      </a>`;
-    } else {
+  // Upgrade PR links to modal-specific styling (icon)
+  result = result.replace(/<a\b[^>]*\bdata-pr="([^"]+)"[^>]*>.*?<\/a>/gi, (match, num) => {
+    const href = match.match(/href="([^"]+)"/i)?.[1] ?? '#';
+    const isCopy = href === '#' || /\bpr-copy\b/i.test(match);
+
+    if (isCopy) {
       return `<a href="#" class="pr-copy code-link" data-pr="${num}" title="Click to copy">
         <span class="material-icons">merge</span>PR #${num}
       </a>`;
     }
+
+    return `<a href="${href}" target="_blank" class="pr-link code-link" data-pr="${num}" title="View on GitHub">
+        <span class="material-icons">merge</span>PR #${num}
+      </a>`;
   });
 
   // Replace file paths (→ filename.ext pattern)
@@ -1554,7 +1558,7 @@ function showEscalationModal(convoyId, convoyName) {
       closeAllModals();
 
       // Dispatch event for UI updates
-      document.dispatchEvent(new CustomEvent('convoy:escalated', {
+      document.dispatchEvent(new CustomEvent(CONVOY_ESCALATED, {
         detail: { convoyId, reason, priority }
       }));
     } catch (err) {
@@ -1726,7 +1730,7 @@ function startAutoRefresh() {
     if (currentPeekAgentId) {
       refreshPeekOutput(currentPeekAgentId);
     }
-  }, 2000); // Refresh every 2 seconds
+  }, PEEK_AUTO_REFRESH_INTERVAL_MS);
 }
 
 function stopAutoRefresh() {

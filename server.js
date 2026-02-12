@@ -18,20 +18,75 @@ import fsPromises from 'fs/promises';
 import os from 'os';
 import readline from 'readline';
 import { fileURLToPath } from 'url';
-import cors from 'cors';
+
+import { createApp } from './server/app/createApp.js';
+import { AgentPath } from './server/domain/values/AgentPath.js';
+import { CommandRunner } from './server/infrastructure/CommandRunner.js';
+import { CacheRegistry } from './server/infrastructure/CacheRegistry.js';
+import { BDGateway } from './server/gateways/BDGateway.js';
+import { GTGateway } from './server/gateways/GTGateway.js';
+import { GitHubGateway } from './server/gateways/GitHubGateway.js';
+import { TmuxGateway } from './server/gateways/TmuxGateway.js';
+import { BeadService } from './server/services/BeadService.js';
+import { ConvoyService } from './server/services/ConvoyService.js';
+import { FormulaService } from './server/services/FormulaService.js';
+import { GitHubService } from './server/services/GitHubService.js';
+import { StatusService } from './server/services/StatusService.js';
+import { TargetService } from './server/services/TargetService.js';
+import { WorkService } from './server/services/WorkService.js';
+import { registerBeadRoutes } from './server/routes/beads.js';
+import { registerConvoyRoutes } from './server/routes/convoys.js';
+import { registerFormulaRoutes } from './server/routes/formulas.js';
+import { registerGitHubRoutes } from './server/routes/github.js';
+import { registerStatusRoutes } from './server/routes/status.js';
+import { registerTargetRoutes } from './server/routes/targets.js';
+import { registerWorkRoutes } from './server/routes/work.js';
 
 const execFileAsync = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
-const server = createServer(app);
-const wss = new WebSocketServer({ server });
-
 const PORT = process.env.GASTOWN_PORT || 7667;
 const HOST = process.env.HOST || '127.0.0.1';
-const HOME = process.env.HOME || require('os').homedir();
+const HOME = process.env.HOME || os.homedir();
 const GT_ROOT = process.env.GT_ROOT || path.join(HOME, 'gt');
+
+const commandRunner = new CommandRunner();
+const gtGateway = new GTGateway({ runner: commandRunner, gtRoot: GT_ROOT });
+const bdGateway = new BDGateway({ runner: commandRunner, gtRoot: GT_ROOT });
+const tmuxGateway = new TmuxGateway({ runner: commandRunner });
+const backendCache = new CacheRegistry();
+const convoyService = new ConvoyService({
+  gtGateway,
+  cache: backendCache,
+  emit: (type, data) => broadcast({ type, data }),
+});
+const statusService = new StatusService({ gtGateway, tmuxGateway, cache: backendCache, gtRoot: GT_ROOT });
+const targetService = new TargetService({ statusService });
+const beadService = new BeadService({
+  bdGateway,
+  emit: (type, data) => broadcast({ type, data }),
+});
+const workService = new WorkService({
+  gtGateway,
+  bdGateway,
+  emit: (type, data) => broadcast({ type, data }),
+});
+const gitHubGateway = new GitHubGateway({ runner: commandRunner });
+const gitHubService = new GitHubService({ gitHubGateway, statusService, cache: backendCache });
+
+const defaultOrigins = [
+  `http://localhost:${PORT}`,
+  `http://127.0.0.1:${PORT}`,
+];
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim()).filter(Boolean)
+  : defaultOrigins;
+const allowNullOrigin = process.env.ALLOW_NULL_ORIGIN === 'true';
+
+const app = createApp({ allowedOrigins, allowNullOrigin });
+const server = createServer(app);
+const wss = new WebSocketServer({ server });
 
 // Simple in-memory cache with TTL
 const cache = new Map();
@@ -108,51 +163,7 @@ setInterval(() => {
   }
 }, CACHE_CLEANUP_INTERVAL);
 
-// Pending requests map - prevents duplicate concurrent requests for same data
-const pendingRequests = new Map();
-
-// Get or create a pending request - deduplicates concurrent calls
-function getPendingOrExecute(key, executor) {
-  // Return cached data if available
-  const cached = getCached(key);
-  if (cached) return Promise.resolve(cached);
-
-  // Return existing pending request if one is in flight
-  if (pendingRequests.has(key)) {
-    return pendingRequests.get(key);
-  }
-
-  // Execute and store promise
-  const promise = executor().finally(() => {
-    pendingRequests.delete(key);
-  });
-  pendingRequests.set(key, promise);
-  return promise;
-}
-
 // Middleware
-app.disable('x-powered-by');
-
-const defaultOrigins = [
-  `http://localhost:${PORT}`,
-  `http://127.0.0.1:${PORT}`,
-];
-const allowedOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim()).filter(Boolean)
-  : defaultOrigins;
-const allowAllOrigins = allowedOrigins.includes('*');
-const allowNullOrigin = process.env.ALLOW_NULL_ORIGIN === 'true';
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (allowAllOrigins) return callback(null, true);
-    if (origin === 'null') return callback(allowNullOrigin ? null : new Error('CORS origin not allowed'), allowNullOrigin);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error('CORS origin not allowed'));
-  },
-}));
-app.use(express.json({ limit: '1mb' }));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use('/css', express.static(path.join(__dirname, 'css')));
 // Add cache-control headers for JS files to improve load times
@@ -195,21 +206,13 @@ function quoteArg(arg) {
   return "'" + str.replace(/'/g, "'\\''") + "'";
 }
 
-const SAFE_SEGMENT_RE = /^[A-Za-z0-9._-]+$/;
-
-function isSafeSegment(value) {
-  if (typeof value !== 'string' || value.length === 0 || value.length > 128) return false;
-  if (value === '.' || value === '..') return false;
-  return SAFE_SEGMENT_RE.test(value);
-}
-
-function validateRigAndName(req, res) {
-  const { rig, name } = req.params;
-  if (!isSafeSegment(rig) || !isSafeSegment(name)) {
+function requireAgentPath(req, res) {
+  try {
+    return new AgentPath(req.params.rig, req.params.name);
+  } catch {
     res.status(400).json({ error: 'Invalid rig or agent name' });
-    return false;
+    return null;
   }
-  return true;
 }
 
 // Check if a specific tmux session is running
@@ -445,291 +448,19 @@ async function loadMailFeedEvents(feedPath) {
 // ============= REST API Endpoints =============
 
 // Town status overview
-app.get('/api/status', async (req, res) => {
-  // Check cache first (skip if ?refresh=true)
-  if (req.query.refresh !== 'true') {
-    const cached = getCached('status');
-    if (cached) {
-      return res.json(cached);
-    }
-  }
-
-  const [result, runningPolecats] = await Promise.all([
-    executeGT(['status', '--json', '--fast']),
-    getRunningPolecats()
-  ]);
-
-  if (result.success) {
-    const data = parseJSON(result.data);
-    if (data) {
-      // Enhance rigs with running state from tmux and git_url from config
-      for (const rig of data.rigs || []) {
-        // Get git_url from cached rig config
-        const rigConfig = await getRigConfig(rig.name);
-        if (rigConfig) {
-          rig.git_url = rigConfig.git_url || null;
-        }
-
-        for (const hook of rig.hooks || []) {
-          // Check if this polecat has a running tmux session
-          const agentPath = hook.agent; // e.g., "hytopia-map-compression/capable"
-          hook.running = runningPolecats.has(agentPath);
-
-          // Also check polecats subdirectory format
-          const polecatPath = agentPath.replace(/\//, '/polecats/');
-          if (!hook.running && runningPolecats.has(polecatPath)) {
-            hook.running = true;
-          }
-        }
-      }
-      data.runningPolecats = Array.from(runningPolecats);
-
-      // Cache the result
-      setCache('status', data, CACHE_TTL.status);
-    }
-    res.json(data || { raw: result.data });
-  } else {
-    res.status(500).json({ error: result.error });
-  }
-});
+registerStatusRoutes(app, { statusService });
 
 // List convoys
-app.get('/api/convoys', async (req, res) => {
-  const cacheKey = `convoys_${req.query.all || 'false'}_${req.query.status || 'all'}`;
+registerConvoyRoutes(app, { convoyService });
 
-  // Check cache
-  if (req.query.refresh !== 'true') {
-    const cached = getCached(cacheKey);
-    if (cached) return res.json(cached);
-  }
+// Work dispatch, escalation, and bead/work actions
+registerWorkRoutes(app, { workService });
 
-  const args = ['convoy', 'list', '--json'];
-  if (req.query.all === 'true') args.push('--all');
-  if (req.query.status) args.push(`--status=${req.query.status}`);
-
-  const result = await executeGT(args);
-  if (result.success) {
-    const data = parseJSON(result.data) || [];
-    setCache(cacheKey, data, CACHE_TTL.convoys);
-    res.json(data);
-  } else {
-    res.status(500).json({ error: result.error });
-  }
-});
-
-// Get convoy details
-app.get('/api/convoy/:id', async (req, res) => {
-  const result = await executeGT(['convoy', 'status', req.params.id, '--json']);
-  if (result.success) {
-    const data = parseJSON(result.data);
-    res.json(data || { id: req.params.id, raw: result.data });
-  } else {
-    res.status(500).json({ error: result.error });
-  }
-});
-
-// Create convoy
-app.post('/api/convoy', async (req, res) => {
-  const { name, issues, notify } = req.body;
-  const args = ['convoy', 'create', name, ...(issues || [])];
-  if (notify) args.push('--notify', notify);
-
-  const result = await executeGT(args);
-  if (result.success) {
-    // Parse convoy ID from text output (e.g., "Created convoy: convoy-abc123")
-    const match = result.data.match(/(?:Created|created)\s*(?:convoy)?:?\s*(\S+)/i);
-    const convoyId = match ? match[1] : result.data.trim();
-    broadcast({ type: 'convoy_created', data: { convoy_id: convoyId, name } });
-    res.json({ success: true, convoy_id: convoyId, raw: result.data });
-  } else {
-    res.status(500).json({ error: result.error });
-  }
-});
-
-// Sling work
-app.post('/api/sling', async (req, res) => {
-  const { bead, target, molecule, quality, args: slingArgs } = req.body;
-  const cmdArgs = ['sling', bead];
-
-  if (target) cmdArgs.push(target);
-  if (molecule) cmdArgs.push('--molecule', molecule);
-  if (quality) cmdArgs.push(`--quality=${quality}`);
-  if (slingArgs) cmdArgs.push('--args', slingArgs);
-
-  // Sling spawns a polecat which can take 60+ seconds
-  // Use ignoreStderr since sling has many non-fatal warnings
-  const result = await executeGT(cmdArgs, { timeout: 90000, ignoreStderr: true });
-
-  // Check for success indicators in output - sling can have warnings but still succeed
-  const output = result.data || result.error || '';
-  const workAttached = output.includes('Work attached to hook') || output.includes('✓ Work attached');
-  const promptSent = output.includes('Start prompt sent') || output.includes('▶ Start prompt sent');
-  const polecatSpawned = output.includes('Polecat') && output.includes('spawned');
-
-  // Consider success if work was attached or prompt was sent
-  const actualSuccess = result.success || workAttached || promptSent;
-
-  if (actualSuccess) {
-    const jsonData = parseJSON(result.data);
-    const responseData = {
-      bead,
-      target,
-      workAttached,
-      promptSent,
-      polecatSpawned,
-      raw: output
-    };
-    broadcast({ type: 'work_slung', data: jsonData || responseData });
-    res.json({ success: true, data: jsonData || responseData, raw: output });
-  } else {
-    // Check for common errors and provide helpful messages
-    const errorMsg = result.error || '';
-
-    // Formula not found error
-    const formulaMatch = errorMsg.match(/formula '([^']+)' not found/);
-    if (formulaMatch) {
-      const formulaName = formulaMatch[1];
-      return res.status(400).json({
-        error: `Formula '${formulaName}' not found`,
-        errorType: 'formula_missing',
-        formula: formulaName,
-        hint: `Create the formula at ~/.beads/formulas/${formulaName}.toml or try a different quality level`,
-        fix: {
-          action: 'create_formula',
-          formula: formulaName,
-          command: `mkdir -p ~/.beads/formulas && cat > ~/.beads/formulas/${formulaName}.toml`
-        }
-      });
-    }
-
-    // Bead not found error
-    if (errorMsg.includes('bead') && errorMsg.includes('not found')) {
-      return res.status(400).json({
-        error: 'Bead not found',
-        errorType: 'bead_missing',
-        hint: 'The issue/bead ID does not exist. Check the ID or create a new bead.',
-        fix: {
-          action: 'search_beads',
-          command: 'bd list'
-        }
-      });
-    }
-
-    res.status(500).json({ error: errorMsg || 'Sling failed - no work attached' });
-  }
-});
+// Beads
+registerBeadRoutes(app, { beadService });
 
 // Get available sling targets
-app.get('/api/targets', async (req, res) => {
-  try {
-    // Get status which includes rigs and agents
-    const statusResult = await getPendingOrExecute('status', async () => {
-      const result = await executeGT(['status', '--json', '--fast']);
-      if (result.success) {
-        const data = parseJSON(result.data) || {};
-        setCache('status', data, CACHE_TTL.status);
-        return data;
-      }
-      return null;
-    });
-
-    const status = statusResult || {};
-    const rigs = status.rigs || [];
-    const targets = [];
-
-    // Global agents
-    targets.push({
-      id: 'mayor',
-      name: 'Mayor',
-      type: 'global',
-      icon: 'account_balance',
-      description: 'Global coordinator - dispatches work across all projects'
-    });
-    targets.push({
-      id: 'deacon',
-      name: 'Deacon',
-      type: 'global',
-      icon: 'health_and_safety',
-      description: 'Health monitor - can dispatch to dogs'
-    });
-    targets.push({
-      id: 'deacon/dogs',
-      name: 'Deacon Dogs',
-      type: 'global',
-      icon: 'pets',
-      description: 'Auto-dispatch to an idle dog worker'
-    });
-
-    // Rigs (can spawn polecats)
-    rigs.forEach(rig => {
-      targets.push({
-        id: rig.name,
-        name: rig.name,
-        type: 'rig',
-        icon: 'folder_special',
-        description: `Auto-spawn polecat in ${rig.name}`
-      });
-
-      // Existing agents in rig
-      if (rig.agents) {
-        rig.agents.forEach(agent => {
-          if (agent.running) {
-            targets.push({
-              id: `${rig.name}/${agent.name}`,
-              name: `${rig.name}/${agent.name}`,
-              type: 'agent',
-              role: agent.role,
-              icon: agent.role === 'witness' ? 'visibility' :
-                    agent.role === 'refinery' ? 'merge_type' : 'engineering',
-              description: `${agent.role} in ${rig.name}`,
-              running: agent.running,
-              has_work: agent.has_work
-            });
-          }
-        });
-      }
-    });
-
-    res.json(targets);
-  } catch (err) {
-    console.error('[API] Error getting targets:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Escalate issue to human overseer
-app.post('/api/escalate', async (req, res) => {
-  // UI sends: convoy_id, reason, priority
-  // gt escalate expects: <topic> -s <severity> -m <message>
-  const { convoy_id, reason, priority } = req.body;
-
-  if (!reason) {
-    return res.status(400).json({ error: 'Reason is required' });
-  }
-
-  // Map priority to severity: normal→MEDIUM, high→HIGH, critical→CRITICAL
-  const severityMap = {
-    normal: 'MEDIUM',
-    high: 'HIGH',
-    critical: 'CRITICAL'
-  };
-  const severity = severityMap[priority] || 'MEDIUM';
-
-  // Build topic from convoy context
-  const topic = convoy_id
-    ? `Convoy ${convoy_id.slice(0, 8)} needs attention`
-    : 'Issue needs attention';
-
-  const args = ['escalate', topic, '-s', severity, '-m', reason];
-
-  const result = await executeGT(args);
-  if (result.success) {
-    broadcast({ type: 'escalation', data: { convoy_id, reason, priority, severity } });
-    res.json({ success: true, data: result.data });
-  } else {
-    res.status(500).json({ error: result.error });
-  }
-});
+registerTargetRoutes(app, { targetService });
 
 // Get mail inbox
 app.get('/api/mail', async (req, res) => {
@@ -934,193 +665,6 @@ app.get('/api/mayor/messages', (req, res) => {
   res.json(mayorMessageHistory.slice(0, limit));
 });
 
-// ============= Beads API =============
-
-// Create a new bead (issue)
-app.post('/api/beads', async (req, res) => {
-  const { title, description, priority, labels } = req.body;
-
-  if (!title) {
-    return res.status(400).json({ error: 'Title is required' });
-  }
-
-  // Map word priorities to bd's P0-P4 format
-  const priorityMap = {
-    'urgent': 'P0',      // Urgent/Critical = highest priority
-    'critical': 'P0',
-    'high': 'P1',
-    'normal': 'P2',
-    'low': 'P3',
-    'backlog': 'P4',
-  };
-
-  // Build bd new command
-  // bd new "title" --description "..." --priority P1 --label bug --label enhancement
-  // Use --no-daemon to avoid timeout issues
-  const args = ['--no-daemon', 'new', title];
-
-  if (description) {
-    args.push('--description', description);
-  }
-  if (priority && priority !== 'normal') {
-    const mappedPriority = priorityMap[priority] || priority;
-    args.push('--priority', mappedPriority);
-  }
-  if (labels && Array.isArray(labels) && labels.length > 0) {
-    labels.forEach(label => {
-      args.push('--label', label);
-    });
-  }
-
-  const result = await executeBD(args);
-
-  if (result.success) {
-    // Parse the bead ID from output (format: "Created bead: gt-abc123")
-    const match = result.data.match(/(?:Created|created)\s*(?:bead|issue)?:?\s*(\S+)/i);
-    const beadId = match ? match[1] : result.data.trim();
-
-    broadcast({ type: 'bead_created', data: { bead_id: beadId, title } });
-    res.json({ success: true, bead_id: beadId, raw: result.data });
-  } else {
-    res.status(500).json({ success: false, error: result.error });
-  }
-});
-
-// Search beads
-app.get('/api/beads/search', async (req, res) => {
-  const query = req.query.q || '';
-
-  // bd search "query" or bd list if no query
-  // Use --no-daemon to avoid timeout issues
-  const args = query ? ['--no-daemon', 'search', query] : ['--no-daemon', 'list'];
-  args.push('--json');
-
-  const result = await executeBD(args);
-
-  if (result.success) {
-    const data = parseJSON(result.data);
-    res.json(data || []);
-  } else {
-    // Return empty array on error (may just be no results)
-    res.json([]);
-  }
-});
-
-// List all beads
-app.get('/api/beads', async (req, res) => {
-  const status = req.query.status;
-  // Use --no-daemon to avoid timeout issues
-  const args = ['--no-daemon', 'list'];
-  if (status) args.push(`--status=${status}`);
-  args.push('--json');
-
-  const result = await executeBD(args);
-
-  if (result.success) {
-    const data = parseJSON(result.data);
-    res.json(data || []);
-  } else {
-    res.json([]);
-  }
-});
-
-// ============= Work Actions =============
-
-// Mark work as done
-app.post('/api/work/:beadId/done', async (req, res) => {
-  const { beadId } = req.params;
-  const { summary } = req.body;
-
-  console.log(`[Work] Marking ${beadId} as done...`);
-
-  const args = ['done', beadId];
-  if (summary) {
-    args.push('-m', summary);
-  }
-
-  const result = await executeBD(args);
-
-  if (result.success) {
-    broadcast({ type: 'work_done', data: { beadId, summary } });
-    res.json({ success: true, beadId, message: `${beadId} marked as done`, raw: result.data });
-  } else {
-    res.status(500).json({ success: false, error: result.error });
-  }
-});
-
-// Park work (temporarily set aside)
-app.post('/api/work/:beadId/park', async (req, res) => {
-  const { beadId } = req.params;
-  const { reason } = req.body;
-
-  console.log(`[Work] Parking ${beadId}...`);
-
-  const args = ['park', beadId];
-  if (reason) {
-    args.push('-m', reason);
-  }
-
-  const result = await executeBD(args);
-
-  if (result.success) {
-    broadcast({ type: 'work_parked', data: { beadId, reason } });
-    res.json({ success: true, beadId, message: `${beadId} parked`, raw: result.data });
-  } else {
-    res.status(500).json({ success: false, error: result.error });
-  }
-});
-
-// Release work (unassign from agent)
-app.post('/api/work/:beadId/release', async (req, res) => {
-  const { beadId } = req.params;
-
-  console.log(`[Work] Releasing ${beadId}...`);
-
-  const result = await executeBD(['release', beadId]);
-
-  if (result.success) {
-    broadcast({ type: 'work_released', data: { beadId } });
-    res.json({ success: true, beadId, message: `${beadId} released`, raw: result.data });
-  } else {
-    res.status(500).json({ success: false, error: result.error });
-  }
-});
-
-// Reassign work to a different agent
-app.post('/api/work/:beadId/reassign', async (req, res) => {
-  const { beadId } = req.params;
-  const { target } = req.body;
-
-  if (!target) {
-    return res.status(400).json({ error: 'Target is required' });
-  }
-
-  console.log(`[Work] Reassigning ${beadId} to ${target}...`);
-
-  const result = await executeBD(['reassign', beadId, target]);
-
-  if (result.success) {
-    broadcast({ type: 'work_reassigned', data: { beadId, target } });
-    res.json({ success: true, beadId, target, message: `${beadId} reassigned to ${target}`, raw: result.data });
-  } else {
-    res.status(500).json({ success: false, error: result.error });
-  }
-});
-
-// Get bead details
-app.get('/api/bead/:beadId', async (req, res) => {
-  const { beadId } = req.params;
-
-  const result = await executeBD(['show', beadId, '--json']);
-
-  if (result.success) {
-    const data = parseJSON(result.data);
-    res.json(data || { id: beadId });
-  } else {
-    res.status(404).json({ error: 'Bead not found' });
-  }
-});
-
 // Get related PRs/commits for a bead
 app.get('/api/bead/:beadId/links', async (req, res) => {
   const { beadId } = req.params;
@@ -1292,10 +836,10 @@ app.get('/api/mayor/output', async (req, res) => {
 
 // Get polecat output (what they're working on)
 app.get('/api/polecat/:rig/:name/output', async (req, res) => {
-  if (!validateRigAndName(req, res)) return;
-  const { rig, name } = req.params;
+  const agent = requireAgentPath(req, res);
+  if (!agent) return;
   const lines = parseInt(req.query.lines) || 50;
-  const sessionName = `gt-${rig}-${name}`;
+  const sessionName = agent.toSessionName();
 
   const output = await getPolecatOutput(sessionName, lines);
   if (output !== null) {
@@ -1307,9 +851,11 @@ app.get('/api/polecat/:rig/:name/output', async (req, res) => {
 
 // Get full agent transcript (Claude session log)
 app.get('/api/polecat/:rig/:name/transcript', async (req, res) => {
-  if (!validateRigAndName(req, res)) return;
-  const { rig, name } = req.params;
-  const sessionName = `gt-${rig}-${name}`;
+  const agent = requireAgentPath(req, res);
+  if (!agent) return;
+  const rig = agent.rig.value;
+  const name = agent.name.value;
+  const sessionName = agent.toSessionName();
 
   try {
     // First try to get tmux output (full history)
@@ -1369,9 +915,11 @@ app.get('/api/polecat/:rig/:name/transcript', async (req, res) => {
 
 // Start a polecat/agent
 app.post('/api/polecat/:rig/:name/start', async (req, res) => {
-  if (!validateRigAndName(req, res)) return;
-  const { rig, name } = req.params;
-  const agentPath = `${rig}/${name}`;
+  const agent = requireAgentPath(req, res);
+  if (!agent) return;
+  const rig = agent.rig.value;
+  const name = agent.name.value;
+  const agentPath = agent.toString();
 
   console.log(`[Agent] Starting ${agentPath}...`);
 
@@ -1393,9 +941,11 @@ app.post('/api/polecat/:rig/:name/start', async (req, res) => {
 
 // Stop a polecat/agent
 app.post('/api/polecat/:rig/:name/stop', async (req, res) => {
-  if (!validateRigAndName(req, res)) return;
-  const { rig, name } = req.params;
-  const sessionName = `gt-${rig}-${name}`;
+  const agent = requireAgentPath(req, res);
+  if (!agent) return;
+  const rig = agent.rig.value;
+  const name = agent.name.value;
+  const sessionName = agent.toSessionName();
 
   console.log(`[Agent] Stopping ${rig}/${name}...`);
 
@@ -1418,10 +968,12 @@ app.post('/api/polecat/:rig/:name/stop', async (req, res) => {
 
 // Restart a polecat/agent (stop then start)
 app.post('/api/polecat/:rig/:name/restart', async (req, res) => {
-  if (!validateRigAndName(req, res)) return;
-  const { rig, name } = req.params;
-  const agentPath = `${rig}/${name}`;
-  const sessionName = `gt-${rig}-${name}`;
+  const agent = requireAgentPath(req, res);
+  if (!agent) return;
+  const rig = agent.rig.value;
+  const name = agent.name.value;
+  const agentPath = agent.toString();
+  const sessionName = agent.toSessionName();
 
   console.log(`[Agent] Restarting ${agentPath}...`);
 
@@ -1955,441 +1507,23 @@ app.get('/api/service/:name/status', async (req, res) => {
 
 // ============= Formula Management =============
 
-// List all formulas
-app.get('/api/formulas', async (req, res) => {
-  // Check cache
-  if (req.query.refresh !== 'true') {
-    const cached = getCached('formulas');
-    if (cached) return res.json(cached);
-  }
+const formulaCache = {
+  get: (key) => getCached(key),
+  set: (key, value, ttlMs) => setCache(key, value, ttlMs),
+  delete: (key) => cache.delete(key),
+};
 
-  // Try gt formula list first
-  let result = await executeGT(['formula', 'list', '--json']);
-
-  if (result.success) {
-    const formulas = parseJSON(result.data);
-    if (formulas) {
-      setCache('formulas', formulas, CACHE_TTL.formulas);
-      return res.json(formulas);
-    }
-  }
-
-  // Try without --json flag
-  result = await executeGT(['formula', 'list']);
-  if (result.success && result.data) {
-    // Parse text output: "  formula-name - description"
-    const lines = result.data.split('\n');
-    const formulas = [];
-    for (const line of lines) {
-      const match = line.match(/^\s+(\S+)\s*(?:-\s*(.+))?$/);
-      if (match) {
-        formulas.push({ name: match[1], description: match[2] || '' });
-      }
-    }
-    if (formulas.length > 0) {
-      setCache('formulas', formulas, CACHE_TTL.formulas);
-      return res.json(formulas);
-    }
-  }
-
-  // Fallback: try bd formula list
-  try {
-    const { stdout } = await execFileAsync('bd', ['formula', 'list', '--json'], {
-      cwd: GT_ROOT,
-      timeout: 10000
-    });
-    const formulas = JSON.parse(String(stdout || '') || '[]');
-    setCache('formulas', formulas, CACHE_TTL.formulas);
-    return res.json(formulas);
-  } catch {
-    // Final fallback - empty array
-    return res.json([]);
-  }
+const formulaService = new FormulaService({
+  gtGateway,
+  bdGateway,
+  cache: formulaCache,
+  emit: (type, data) => broadcast({ type, data }),
 });
 
-// Search formulas
-app.get('/api/formulas/search', async (req, res) => {
-  const query = req.query.q || '';
-
-  try {
-    // Get all formulas and filter
-    const result = await executeGT(['formula', 'list', '--json']);
-    const formulas = parseJSON(result.data) || [];
-
-    const filtered = formulas.filter(f => {
-      const name = (f.name || '').toLowerCase();
-      const desc = (f.description || '').toLowerCase();
-      const q = query.toLowerCase();
-      return name.includes(q) || desc.includes(q);
-    });
-
-    res.json(filtered);
-  } catch {
-    res.json([]);
-  }
-});
-
-// Get formula details
-app.get('/api/formula/:name', async (req, res) => {
-  const { name } = req.params;
-  const result = await executeGT(['formula', 'show', name, '--json']);
-
-  if (result.success) {
-    const formula = parseJSON(result.data) || {};
-    res.json(formula);
-  } else {
-    res.status(404).json({ error: 'Formula not found' });
-  }
-});
-
-// Create a new formula
-app.post('/api/formulas', async (req, res) => {
-  const { name, description, template } = req.body;
-
-  if (!name) {
-    return res.status(400).json({ error: 'Name is required' });
-  }
-
-  const args = ['formula', 'create', name];
-  if (description) {
-    args.push('--description', description);
-  }
-  if (template) {
-    args.push('--template', template);
-  }
-
-  const result = await executeGT(args);
-
-  if (result.success) {
-    broadcast({ type: 'formula_created', data: { name } });
-    res.json({ success: true, name, raw: result.data });
-  } else {
-    res.status(500).json({ success: false, error: result.error });
-  }
-});
-
-// Use a formula (create work from formula)
-app.post('/api/formula/:name/use', async (req, res) => {
-  const { name } = req.params;
-  const { target, args: formulaArgs } = req.body;
-
-  const cmdArgs = ['formula', 'use', name];
-  if (target) {
-    cmdArgs.push('--target', target);
-  }
-  if (formulaArgs) {
-    cmdArgs.push('--args', formulaArgs);
-  }
-
-  const result = await executeGT(cmdArgs, { timeout: 30000 });
-
-  if (result.success) {
-    broadcast({ type: 'formula_used', data: { name, target } });
-    res.json({ success: true, name, target, raw: result.data });
-  } else {
-    res.status(500).json({ success: false, error: result.error });
-  }
-});
-
-// Update a formula
-app.put('/api/formula/:name', async (req, res) => {
-  const { name } = req.params;
-  const { description, template } = req.body;
-
-  if (!template) {
-    return res.status(400).json({ error: 'Template is required' });
-  }
-
-  // gt formula update doesn't exist, so we need to write directly to file
-  // Formula files are stored at ~/.beads/formulas/{name}.toml
-  const fs = require('fs');
-  const path = require('path');
-  const os = require('os');
-  const formulaPath = path.join(os.homedir(), '.beads', 'formulas', `${name}.toml`);
-
-  try {
-    // Check if formula exists
-    if (!fs.existsSync(formulaPath)) {
-      return res.status(404).json({ error: 'Formula not found' });
-    }
-
-    // Write updated formula
-    const content = `[formula]
-name = "${name}"
-description = "${description || ''}"
-template = """
-${template}
-"""
-`;
-    fs.writeFileSync(formulaPath, content);
-
-    // Invalidate cache
-    invalidateCache('formulas');
-
-    broadcast({ type: 'formula_updated', data: { name } });
-    res.json({ success: true, name, description, template });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Delete a formula
-app.delete('/api/formula/:name', async (req, res) => {
-  const { name } = req.params;
-
-  const fs = require('fs');
-  const path = require('path');
-  const os = require('os');
-  const formulaPath = path.join(os.homedir(), '.beads', 'formulas', `${name}.toml`);
-
-  try {
-    // Check if formula exists
-    if (!fs.existsSync(formulaPath)) {
-      return res.status(404).json({ error: 'Formula not found' });
-    }
-
-    // Delete the formula file
-    fs.unlinkSync(formulaPath);
-
-    // Invalidate cache
-    invalidateCache('formulas');
-
-    broadcast({ type: 'formula_deleted', data: { name } });
-    res.json({ success: true, name });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
+registerFormulaRoutes(app, { formulaService });
 
 // ============= GitHub Integration =============
-
-// Extract GitHub repo from git_url
-function extractGitHubRepo(gitUrl) {
-  if (!gitUrl) return null;
-  // Handle: https://github.com/owner/repo, git@github.com:owner/repo, etc.
-  const match = gitUrl.match(/github\.com[:/]([^/]+\/[^/.\s]+)/);
-  if (match) {
-    // Remove .git suffix if present
-    return match[1].replace(/\.git$/, '');
-  }
-  return null;
-}
-
-// Get all GitHub PRs across rigs
-app.get('/api/github/prs', async (req, res) => {
-  const state = req.query.state || 'open'; // open, closed, all
-  const cacheKey = `github_prs_${state}`;
-
-  // Check cache first (skip if ?refresh=true)
-  if (req.query.refresh !== 'true') {
-    const cached = getCached(cacheKey);
-    if (cached) {
-      return res.json(cached);
-    }
-  }
-
-  try {
-    // Get status with --fast flag (uses cached status data from gt)
-    const result = await executeGT(['status', '--json', '--fast']);
-    if (!result.success) {
-      return res.status(500).json({ error: 'Failed to get status' });
-    }
-
-    const data = parseJSON(result.data) || {};
-    const rigs = data.rigs || [];
-
-    // Enrich rigs with git_url from config.json (not in raw status)
-    for (const rig of rigs) {
-      if (!rig.git_url) {
-        const rigConfig = await getRigConfig(rig.name);
-        if (rigConfig) {
-          rig.git_url = rigConfig.git_url || null;
-        }
-      }
-    }
-    console.log(`[GitHub] Found ${rigs.length} rigs, ${rigs.filter(r => r.git_url).length} with git_url`);
-
-    // Extract repos from rigs
-    const repoPromises = rigs
-      .filter(rig => rig.git_url)
-      .map(rig => {
-        const repo = extractGitHubRepo(rig.git_url);
-        if (!repo) return Promise.resolve([]);
-
-        // Fetch PRs in parallel
-        return execFileAsync(
-          'gh',
-          ['pr', 'list', '--repo', repo, '--state', state, '--json', 'number,title,author,createdAt,updatedAt,url,headRefName,state,isDraft,reviewDecision', '--limit', '20'],
-          { timeout: 10000 }
-        )
-          .then(({ stdout }) => {
-            const prs = JSON.parse(String(stdout || '') || '[]');
-            return prs.map(pr => ({ ...pr, rig: rig.name, repo }));
-          })
-          .catch(err => {
-            console.error(`[GitHub] Failed to fetch PRs for ${repo}:`, err.message);
-            return [];
-          });
-      });
-
-    // Wait for all PR fetches to complete in parallel
-    const results = await Promise.all(repoPromises);
-    const allPRs = results.flat();
-
-    // Sort by updated date descending
-    allPRs.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-
-    // Cache the result
-    setCache(cacheKey, allPRs, CACHE_TTL.github_prs);
-
-    res.json(allPRs);
-  } catch (err) {
-    console.error('[GitHub] Error fetching PRs:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get PR details
-app.get('/api/github/pr/:repo/:number', async (req, res) => {
-  const { repo, number } = req.params;
-
-  try {
-    const { stdout } = await execFileAsync(
-      'gh',
-      ['pr', 'view', String(number), '--repo', repo, '--json', 'number,title,author,body,createdAt,updatedAt,url,headRefName,baseRefName,state,isDraft,additions,deletions,commits,files,reviews,comments'],
-      { timeout: 15000 }
-    );
-
-    const pr = JSON.parse(String(stdout || '') || '{}');
-    res.json(pr);
-  } catch (err) {
-    console.error(`[GitHub] Error fetching PR #${number}:`, err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get GitHub issues across all rigs
-app.get('/api/github/issues', async (req, res) => {
-  const state = req.query.state || 'open'; // open, closed, all
-  const cacheKey = `github_issues_${state}`;
-
-  // Check cache
-  if (req.query.refresh !== 'true') {
-    const cached = getCached(cacheKey);
-    if (cached) return res.json(cached);
-  }
-
-  try {
-    // Get status with --fast flag
-    const result = await executeGT(['status', '--json', '--fast']);
-    if (!result.success) {
-      return res.status(500).json({ error: 'Failed to get status' });
-    }
-
-    const status = parseJSON(result.data);
-    const rigs = status?.rigs || [];
-
-    // Enrich rigs with git_url from config.json
-    for (const rig of rigs) {
-      if (!rig.git_url) {
-        const rigConfig = await getRigConfig(rig.name);
-        if (rigConfig) {
-          rig.git_url = rigConfig.git_url || null;
-        }
-      }
-    }
-
-    // Fetch issues in parallel (like PRs)
-    const issuePromises = rigs
-      .filter(rig => rig.git_url)
-      .map(rig => {
-        const repo = extractGitHubRepo(rig.git_url);
-        if (!repo) return Promise.resolve([]);
-
-        return execFileAsync(
-          'gh',
-          ['issue', 'list', '--repo', repo, '--state', state, '--json', 'number,title,author,labels,createdAt,updatedAt,url,state', '--limit', '30'],
-          { timeout: 10000 }
-        )
-          .then(({ stdout }) => {
-            const issues = JSON.parse(String(stdout || '') || '[]');
-            return issues.map(issue => ({ ...issue, repo, rig: rig.name }));
-          })
-          .catch(err => {
-            console.warn(`[GitHub] Failed to fetch issues for ${repo}:`, err.message);
-            return [];
-          });
-      });
-
-    // Wait for all fetches in parallel
-    const results = await Promise.all(issuePromises);
-    const allIssues = results.flat();
-
-    // Sort by updatedAt descending
-    allIssues.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-
-    // Cache result
-    setCache(cacheKey, allIssues, CACHE_TTL.github_issues);
-
-    res.json(allIssues);
-  } catch (err) {
-    console.error('[GitHub] Error fetching issues:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get GitHub issue details
-app.get('/api/github/issue/:repo/:number', async (req, res) => {
-  const { repo, number } = req.params;
-
-  try {
-    const { stdout } = await execFileAsync(
-      'gh',
-      ['issue', 'view', String(number), '--repo', repo, '--json', 'number,title,author,body,createdAt,updatedAt,url,state,labels,comments,assignees'],
-      { timeout: 15000 }
-    );
-
-    const issue = JSON.parse(String(stdout || '') || '{}');
-    res.json(issue);
-  } catch (err) {
-    console.error(`[GitHub] Error fetching issue #${number}:`, err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// List all GitHub repos for current user
-app.get('/api/github/repos', async (req, res) => {
-  const limit = parseInt(req.query.limit) || 100;
-  const visibility = req.query.visibility; // public, private, or omit for all
-  const cacheKey = `github_repos_${visibility || 'all'}_${limit}`;
-
-  // Check cache (repos don't change often)
-  if (req.query.refresh !== 'true') {
-    const cached = getCached(cacheKey);
-    if (cached) return res.json(cached);
-  }
-
-  try {
-    const args = ['repo', 'list', '--limit', String(limit), '--json', 'name,nameWithOwner,description,url,isPrivate,isFork,pushedAt,primaryLanguage,stargazerCount'];
-    if (visibility && visibility !== 'all') {
-      args.push('--visibility', visibility);
-    }
-    const { stdout } = await execFileAsync('gh', args, { timeout: 30000 });
-
-    const repos = JSON.parse(String(stdout || '') || '[]');
-
-    // Sort by most recently pushed
-    repos.sort((a, b) => new Date(b.pushedAt) - new Date(a.pushedAt));
-
-    // Cache for 5 minutes
-    setCache(cacheKey, repos, 5 * 60 * 1000);
-
-    res.json(repos);
-  } catch (err) {
-    console.error('[GitHub] Error listing repos:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
+registerGitHubRoutes(app, { gitHubService });
 
 // ============= WebSocket for Real-time Events =============
 
@@ -2481,22 +1615,17 @@ wss.on('connection', (ws) => {
     startActivityStream();
   }
 
-  // Send initial status - uses deduplication to prevent duplicate concurrent requests
-  getPendingOrExecute('status', async () => {
-    const result = await executeGT(['status', '--json', '--fast']);
-    if (result.success) {
-      const data = parseJSON(result.data);
-      if (data) setCache('status', data, CACHE_TTL.status);
-      return data;
-    }
-    return null;
-  }).then(data => {
-    if (data && ws.readyState === 1) { // OPEN
-      ws.send(JSON.stringify({ type: 'status', data }));
-    }
-  }).catch(err => {
-    console.error('[WS] Error getting initial status:', err.message);
-  });
+  // Send initial status
+  statusService
+    .getStatus({ refresh: false })
+    .then((data) => {
+      if (data && ws.readyState === 1) { // OPEN
+        ws.send(JSON.stringify({ type: 'status', data }));
+      }
+    })
+    .catch((err) => {
+      console.error('[WS] Error getting initial status:', err.message);
+    });
 
   ws.on('close', () => {
     console.log('[WS] Client disconnected');

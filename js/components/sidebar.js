@@ -8,6 +8,8 @@ import { AGENT_TYPES, STATUS_ICONS, getAgentType, getAgentConfig, formatAgentNam
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { escapeHtml, escapeAttr, truncate, capitalize } from '../utils/html.js';
+import { STATUS_REFRESH } from '../shared/events.js';
+import { TIMING_MS } from '../shared/timing.js';
 
 // Simple pluralization for agent type labels
 function pluralize(word, count) {
@@ -294,7 +296,7 @@ async function handleServiceAction(action, service, btn) {
     if (result.success) {
       showToast(`${capitalize(service)} ${action}ed successfully`, 'success');
       // Trigger status refresh
-      document.dispatchEvent(new CustomEvent('status:refresh'));
+      document.dispatchEvent(new CustomEvent(STATUS_REFRESH));
     } else {
       showToast(`Failed to ${action} ${service}: ${result.error}`, 'error');
     }
@@ -370,15 +372,15 @@ function showAgentQuickActions(nodeEl, agentId) {
   `;
 
   // Position the popover
-  popover.style.cssText = `
-    position: fixed;
-    top: ${rect.bottom + 8}px;
-    left: ${rect.left}px;
-    z-index: 9999;
-    min-width: 220px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-lg);
+	  popover.style.cssText = `
+	    position: fixed;
+	    top: ${rect.bottom + 8}px;
+	    left: ${rect.left}px;
+	    z-index: var(--z-tooltip);
+	    min-width: 220px;
+	    background: var(--bg-elevated);
+	    border: 1px solid var(--border-default);
+	    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
     padding: var(--space-md);
     animation: fadeIn 0.15s ease;
@@ -482,8 +484,8 @@ function switchToAgentsTab(agentId) {
       if (agentCard) {
         agentCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
         agentCard.classList.add('highlight');
-        setTimeout(() => agentCard.classList.remove('highlight'), 2000);
+        setTimeout(() => agentCard.classList.remove('highlight'), TIMING_MS.FEEDBACK);
       }
-    }, 100);
+    }, TIMING_MS.FOCUS_DELAY);
   }
 }

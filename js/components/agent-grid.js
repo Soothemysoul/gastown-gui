@@ -5,6 +5,9 @@
  */
 
 import { AGENT_TYPES, STATUS_ICONS, STATUS_COLORS, getAgentConfig, formatAgentName } from '../shared/agent-types.js';
+import { AGENT_DETAIL, AGENT_NUDGE, AGENT_PEEK, POLECAT_ACTION } from '../shared/events.js';
+import { escapeHtml, truncate } from '../utils/html.js';
+import { getStaggerClass } from '../shared/animations.js';
 
 /**
  * Render the agent grid
@@ -95,9 +98,9 @@ function renderAgentCard(agent, index) {
   const statusColor = STATUS_COLORS[status] || STATUS_COLORS.idle;
 
   return `
-    <div class="agent-card animate-spawn stagger-${Math.min(index, 6)}"
-         data-agent-id="${agent.id || agent.address}"
-         style="--agent-color: ${agentConfig.color}">
+	    <div class="agent-card animate-spawn ${getStaggerClass(index)}"
+	         data-agent-id="${agent.id || agent.address}"
+	         style="--agent-color: ${agentConfig.color}">
       <div class="agent-header">
         <div class="agent-avatar" style="background-color: ${agentConfig.color}20; border-color: ${agentConfig.color}">
           <span class="material-icons" style="color: ${agentConfig.color}">${agentConfig.icon}</span>
@@ -228,7 +231,7 @@ function renderAgentStats(agent) {
  * Show agent detail modal
  */
 function showAgentDetail(agentId) {
-  const event = new CustomEvent('agent:detail', { detail: { agentId } });
+  const event = new CustomEvent(AGENT_DETAIL, { detail: { agentId } });
   document.dispatchEvent(event);
 }
 
@@ -236,7 +239,7 @@ function showAgentDetail(agentId) {
  * Show nudge modal for an agent
  */
 function showNudgeModal(agentId) {
-  const event = new CustomEvent('agent:nudge', { detail: { agentId } });
+  const event = new CustomEvent(AGENT_NUDGE, { detail: { agentId } });
   document.dispatchEvent(event);
 }
 
@@ -257,7 +260,7 @@ async function handlePolecatAction(agentId, action) {
   const name = parts.slice(1).join('/');
 
   // Dispatch event for API call (handled by app.js or api.js)
-  const event = new CustomEvent('polecat:action', {
+  const event = new CustomEvent(POLECAT_ACTION, {
     detail: { rig, name, action, agentId }
   });
   document.dispatchEvent(event);
@@ -267,27 +270,11 @@ async function handlePolecatAction(agentId, action) {
  * Show agent output in peek modal
  */
 function showAgentOutput(agentId) {
-  const event = new CustomEvent('agent:peek', { detail: { agentId } });
+  const event = new CustomEvent(AGENT_PEEK, { detail: { agentId } });
   document.dispatchEvent(event);
 }
 
 // Utility functions
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-function truncate(str, length) {
-  if (!str) return '';
-  return str.length > length ? str.slice(0, length) + '...' : str;
-}
-
-function capitalize(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
 function formatDuration(seconds) {
   if (!seconds) return '0s';
   if (seconds < 60) return `${Math.round(seconds)}s`;

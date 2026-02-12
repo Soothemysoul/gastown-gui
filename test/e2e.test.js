@@ -21,6 +21,8 @@ import {
   screenshot,
   assert,
   sleep,
+  clearBrowserErrors,
+  getBrowserErrors,
 } from './setup.js';
 
 describe('Gas Town GUI E2E Tests', () => {
@@ -473,5 +475,263 @@ describe('Component Tests', () => {
 
       expect(hasMail || hasEmptyState).toBe(true);
     });
+  });
+});
+
+describe('UI Smoke Test', () => {
+  let page;
+
+  beforeAll(async () => {
+    await launchBrowser();
+  });
+
+  afterAll(async () => {
+    await closeBrowser();
+  });
+
+  beforeEach(async () => {
+    page = await createPage();
+
+    // Auto-accept dialogs used by some UI actions (prompt/confirm).
+    page.on('dialog', async (dialog) => {
+      try {
+        if (dialog.type() === 'prompt') {
+          const msg = dialog.message() || '';
+          if (msg.includes('completion summary')) return dialog.accept('Completed via UI smoke test');
+          if (msg.includes('reason for parking')) return dialog.accept('Parked via UI smoke test');
+          if (msg.includes('target agent address')) return dialog.accept('mayor');
+          return dialog.accept('ok');
+        }
+        if (dialog.type() === 'confirm') return dialog.accept();
+        return dialog.dismiss();
+      } catch {
+        // ignore
+      }
+    });
+  });
+
+  it('should click through all tabs and key flows without JS errors', async () => {
+    const allowConsoleErrorPatterns = [
+      /Failed to load resource/i,
+      /net::ERR_/i,
+      /favicon\\.ico/i,
+    ];
+
+    const safeClick = async (selector, { timeout = 8000, retries = 2 } = {}) => {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          await page.waitForSelector(selector, { timeout, visible: true });
+          await page.click(selector);
+          return;
+        } catch (err) {
+          const message = err?.message || String(err);
+          if (message.includes('Node is detached') && attempt < retries) {
+            await sleep(200);
+            continue;
+          }
+          throw err;
+        }
+      }
+    };
+
+    const safeOptionalClick = async (selector, opts) => {
+      const exists = await elementExists(page, selector);
+      if (!exists) return false;
+      try {
+        await safeClick(selector, opts);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    await navigateToApp(page);
+    await waitForConnection(page);
+
+    // Let background preloads settle (PRs/issues/formulas/rigs/agents).
+    await sleep(750);
+
+    // Reset counters after startup so we only catch UI issues during smoke.
+    clearBrowserErrors(page);
+
+    // Help modal
+    await safeClick('#help-btn');
+    await page.waitForSelector('#help-modal:not(.hidden)', { timeout: 5000 });
+    await closeModals(page);
+
+    // Convoys: expand + escalate + sling
+    await switchView(page, 'convoys');
+    await page.waitForFunction(() => {
+      const list = document.getElementById('convoy-list');
+      return list && (list.querySelector('.convoy-card') || list.querySelector('.empty-state') || list.querySelector('.error-state'));
+    }, { timeout: 8000 });
+
+    const hasConvoy = await elementExists(page, '.convoy-card');
+    if (hasConvoy) {
+      await safeClick('.convoy-card .convoy-expand-btn');
+      await sleep(250);
+
+      // Escalation modal (opens dynamic modal inside overlay)
+      const didEscalateClick = await safeOptionalClick('.convoy-card [data-action="escalate"]');
+      if (didEscalateClick) {
+        await page.waitForSelector('#escalation-modal:not(.hidden)', { timeout: 5000 });
+        await fillField(page, '#escalation-reason', 'Escalation smoke test');
+        await page.select('#escalation-priority', 'high');
+        await safeClick('#escalation-form button[type="submit"]');
+        await page.waitForSelector('#modal-overlay.hidden', { timeout: 8000 });
+      }
+    }
+
+    // Sling modal (main modal)
+    await safeClick('#sling-btn');
+    await page.waitForSelector('#sling-modal:not(.hidden)', { timeout: 5000 });
+    await fillField(page, '#sling-bead', 'bead-1');
+    await page.select('#sling-target', 'mayor');
+    await safeClick('#sling-form button[type="submit"]');
+    await page.waitForSelector('#modal-overlay.hidden', { timeout: 8000 });
+
+    // Work: reassign + release + park + done
+    await switchView(page, 'work');
+    await page.waitForFunction(() => {
+      const list = document.getElementById('work-list');
+      return list && (list.querySelector('.bead-card') || list.querySelector('.empty-state'));
+    }, { timeout: 8000 });
+
+    const hasWork = await elementExists(page, '.bead-card');
+    if (hasWork) {
+      await safeOptionalClick('.bead-card [data-action="reassign"]');
+      await sleep(300);
+      await safeOptionalClick('.bead-card [data-action="release"]');
+      await sleep(300);
+      await safeOptionalClick('.bead-card [data-action="park"]');
+      await sleep(300);
+      await safeOptionalClick('.bead-card [data-action="done"]');
+      await sleep(300);
+    }
+
+    // Agents: open peek output + open nudge modal
+    await switchView(page, 'agents');
+    await page.waitForFunction(() => {
+      const grid = document.getElementById('agent-grid');
+      return grid && (grid.querySelector('.agent-card') || grid.querySelector('.empty-state'));
+    }, { timeout: 8000 });
+
+    const hasAgent = await elementExists(page, '.agent-card');
+    if (hasAgent) {
+      const didOpenPeek = await page.evaluate(() => {
+        // Prefer a rig/name agent if present; otherwise use a known mock polecat id.
+        const agentIds = Array.from(document.querySelectorAll('.agent-card'))
+          .map((el) => el?.dataset?.agentId)
+          .filter(Boolean);
+        const agentId = agentIds.find((id) => id.includes('/')) || 'gastown/worker-1';
+        document.dispatchEvent(new CustomEvent('agent:peek', { detail: { agentId } }));
+        return true;
+      });
+      if (didOpenPeek) {
+        await page.waitForSelector('#peek-modal:not(.hidden)', { timeout: 8000 });
+        await closeModals(page);
+      }
+
+      const didOpenNudge = await page.evaluate(() => {
+        const agentId = document.querySelector('.agent-card')?.dataset?.agentId;
+        if (!agentId) return false;
+        document.dispatchEvent(new CustomEvent('agent:nudge', { detail: { agentId } }));
+        return true;
+      });
+      if (didOpenNudge) {
+        await page.waitForSelector('#nudge-modal:not(.hidden)', { timeout: 5000 });
+        await closeModals(page);
+      }
+    }
+
+    // Rigs: GitHub repo picker + add rig
+    await switchView(page, 'rigs');
+    await page.waitForFunction(() => {
+      const list = document.getElementById('rig-list');
+      return list && (list.querySelector('.rig-card') || list.querySelector('.empty-state'));
+    }, { timeout: 8000 });
+
+    await safeClick('#new-rig-btn');
+    await page.waitForSelector('#new-rig-modal:not(.hidden)', { timeout: 8000 });
+    await safeClick('#github-repo-picker-btn');
+    await page.waitForSelector('#github-repo-list:not(.hidden)', { timeout: 8000 });
+    await fillField(page, '#rig-name', 'smoke-rig');
+    await fillField(page, '#rig-url', 'https://github.com/web3dev1337/smoke-rig');
+    await safeClick('#new-rig-form button[type="submit"]');
+    await page.waitForSelector('#modal-overlay.hidden', { timeout: 8000 });
+
+    // Crews: create crew via dynamic modal
+    await switchView(page, 'crews');
+    await page.waitForSelector('#new-crew-btn', { timeout: 8000 });
+    await safeClick('#new-crew-btn');
+    await page.waitForSelector('#dynamic-modal:not(.hidden)', { timeout: 8000 });
+    await fillField(page, '#crew-name', 'smoke-crew');
+    // Avoid submitting in smoke test (can mutate list + be flaky); just validate modal wiring.
+    await page.waitForSelector('#new-crew-form', { timeout: 8000 });
+    await closeModals(page);
+
+    // PRs + Issues tabs should render (no errors)
+    await switchView(page, 'prs');
+    await page.waitForFunction(() => {
+      const list = document.getElementById('pr-list-container');
+      return list && (list.querySelector('.pr-card') || list.querySelector('.empty-state') || list.querySelector('.error-state'));
+    }, { timeout: 8000 });
+
+    await switchView(page, 'issues');
+    await page.waitForFunction(() => {
+      const list = document.getElementById('issue-list-container');
+      return list && (list.querySelector('.issue-card') || list.querySelector('.empty-state') || list.querySelector('.error-state'));
+    }, { timeout: 8000 });
+
+    // Click sling on first issue card to ensure modal wiring works
+    const didIssueSlingClick = await safeOptionalClick('.issue-card [data-action="sling"]');
+    if (didIssueSlingClick) {
+      await page.waitForSelector('#sling-modal:not(.hidden)', { timeout: 8000 });
+      const beadValue = await page.$eval('#sling-bead', el => el.value);
+      expect(beadValue).toContain('gh:');
+      await closeModals(page);
+    }
+
+    // Formulas: view details (opens peek modal)
+    await switchView(page, 'formulas');
+    await page.waitForFunction(() => {
+      const list = document.getElementById('formula-list-container');
+      return list && (list.querySelector('.formula-card') || list.querySelector('.empty-state') || list.querySelector('.error-state'));
+    }, { timeout: 8000 });
+
+    const didFormulaViewClick = await safeOptionalClick('.formula-card [data-action="view"]');
+    if (didFormulaViewClick) {
+      await page.waitForSelector('#peek-modal:not(.hidden)', { timeout: 8000 });
+      await closeModals(page);
+    }
+
+    // Mail: open mail detail + reply
+    await switchView(page, 'mail');
+    await page.waitForFunction(() => {
+      const list = document.getElementById('mail-list');
+      return list && (list.querySelector('.mail-item') || list.querySelector('.empty-state'));
+    }, { timeout: 8000 });
+
+    const didMailClick = await safeOptionalClick('.mail-item');
+    if (didMailClick) {
+      await page.waitForSelector('#mail-detail-modal:not(.hidden)', { timeout: 8000 });
+      const didReplyClick = await safeOptionalClick('#mail-detail-modal:not(.hidden) button.btn.btn-secondary');
+      if (didReplyClick) {
+        await page.waitForSelector('#mail-compose-modal:not(.hidden)', { timeout: 8000 });
+      }
+      await closeModals(page);
+    }
+
+    // Health: run doctor and render summary
+    await switchView(page, 'health');
+    await safeClick('#health-refresh');
+    await page.waitForFunction(() => {
+      const container = document.getElementById('health-check-container');
+      return container && (container.querySelector('.health-summary') || container.querySelector('.health-error'));
+    }, { timeout: 12000 });
+
+    const { consoleErrors, pageErrors } = getBrowserErrors(page, { allowConsoleErrorPatterns });
+    expect(pageErrors).toEqual([]);
+    expect(consoleErrors).toEqual([]);
   });
 });

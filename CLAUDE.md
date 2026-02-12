@@ -7,9 +7,9 @@ Web GUI for [steveyegge/gastown](https://github.com/steveyegge/gastown) multi-ag
 ## Commands
 
 ```bash
-npm start          # Start server (port 4000)
+npm start          # Start server
 npm run dev        # Dev mode with auto-reload
-npm test           # Run all tests (206 tests)
+npm test           # Run all tests
 npm run test:unit  # Unit tests only
 npm run test:e2e   # E2E tests only
 ```
@@ -18,7 +18,40 @@ npm run test:e2e   # E2E tests only
 
 ```
 gastown-gui/
-├── server.js              # Express server + 61 API endpoints wrapping gt CLI
+├── server.js              # Express server + API endpoints wrapping gt CLI
+├── server/                # Backend modules (in progress)
+│   ├── app/
+│   │   └── createApp.js
+│   ├── domain/
+│   │   └── values/
+│   │       ├── AgentPath.js
+│   │       └── SafeSegment.js
+│   ├── infrastructure/
+│   │   ├── CacheRegistry.js
+│   │   ├── CommandRunner.js
+│   │   └── EventBus.js
+│   ├── routes/
+│   │   ├── beads.js
+│   │   ├── formulas.js
+│   │   ├── convoys.js
+│   │   ├── github.js
+│   │   ├── status.js
+│   │   ├── targets.js
+│   │   └── work.js
+│   ├── services/
+│   │   ├── BeadService.js
+│   │   ├── ConvoyService.js
+│   │   ├── FormulaService.js
+│   │   ├── GitHubService.js
+│   │   ├── StatusService.js
+│   │   ├── TargetService.js
+│   │   └── WorkService.js
+│   └── gateways/
+│       ├── BDGateway.js
+│       ├── GitHubGateway.js
+│       ├── GitGateway.js
+│       ├── GTGateway.js
+│       └── TmuxGateway.js
 ├── index.html             # Main HTML entry point
 ├── package.json           # Dependencies & npm scripts
 ├── bin/
@@ -48,7 +81,12 @@ gastown-gui/
 │   │   └── work-list.js       # Work items display
 │   ├── shared/
 │   │   ├── agent-types.js     # Agent type definitions & colors
-│   │   └── events.js          # Custom event bus
+│   │   ├── animations.js      # Shared animation helpers
+│   │   ├── beads.js           # Bead domain helpers/constants
+│   │   ├── close-reason.js    # close_reason formatting helpers
+│   │   ├── events.js          # Custom event bus
+│   │   ├── github-repos.js    # Bead/rig → GitHub repo mapping helpers
+│   │   └── timing.js          # Shared timing constants
 │   └── utils/
 │       ├── formatting.js      # Date/number formatters
 │       ├── html.js            # HTML escape/template helpers
@@ -64,17 +102,40 @@ gastown-gui/
 │   ├── setup.js           # Test environment setup
 │   ├── globalSetup.js     # Vitest global setup
 │   ├── mock-server.js     # Mock gt CLI responses
-│   ├── e2e.test.js        # Puppeteer browser tests (24)
+│   ├── e2e.test.js        # Puppeteer browser tests
 │   ├── integration.test.js # Legacy integration tests
 │   ├── unit/
-│   │   ├── state.test.js      # State management tests (53)
-│   │   └── quoteArg.test.js   # Shell injection security tests (22)
+│   │   ├── state.test.js      # State management tests
+│   │   ├── cacheRegistry.test.js # CacheRegistry tests
+│   │   ├── commandRunner.test.js  # CommandRunner tests
+│   │   ├── eventBus.test.js       # EventBus tests
+│   │   ├── gtGateway.test.js      # GTGateway tests
+│   │   ├── bdGateway.test.js      # BDGateway tests
+│   │   ├── tmuxGateway.test.js    # TmuxGateway tests
+│   │   ├── githubGateway.test.js  # GitHubGateway tests
+│   │   ├── gitGateway.test.js     # GitGateway tests
+│   │   ├── safeSegment.test.js    # SafeSegment tests
+│   │   ├── agentPath.test.js      # AgentPath tests
+│   │   ├── statusService.test.js  # StatusService tests
+│   │   ├── targetService.test.js  # TargetService tests
+│   │   ├── githubService.test.js  # GitHubService tests
+│   │   ├── convoyService.test.js  # ConvoyService tests
+│   │   ├── statusRoutes.test.js   # Status endpoint tests (real Express app)
+│   │   ├── targetRoutes.test.js   # Target endpoint tests (real Express app)
+│   │   ├── githubRoutes.test.js   # GitHub endpoint tests (real Express app)
+│   │   ├── convoyRoutes.test.js   # Convoy endpoint tests (real Express app)
+│   │   ├── formulaRoutes.test.js  # Formula endpoint tests (real Express app)
+│   │   └── quoteArg.test.js   # Shell injection security tests
 │   └── integration/
-│       ├── endpoints.test.js  # API endpoint tests (78)
-│       ├── websocket.test.js  # WebSocket lifecycle tests (9)
-│       └── cache.test.js      # Cache invalidation tests (10)
+│       ├── endpoints.test.js  # API endpoint tests
+│       ├── websocket.test.js  # WebSocket lifecycle tests
+│       └── cache.test.js      # Cache invalidation tests
 ├── vitest.config.js       # Main test config
-└── vitest.unit.config.js  # Unit-only test config
+├── vitest.unit.config.js  # Unit-only test config
+├── refactoring-analysis/  # Refactor analysis + plans + reports
+│   └── trace/             # Sanitized prompt/trace exports (safe to share)
+└── scripts/
+    └── extract_user_prompts.mjs # Builds sanitized prompt log from local trace dirs
 ```
 
 ## Key Patterns
@@ -118,6 +179,6 @@ gastown-gui/
 
 ## Testing
 
-- **206 tests** total (unit: 53, integration: 129, e2e: 24)
-- **61 API endpoints** - all tested (100% coverage)
+- Tests cover unit, integration, and e2e layers
+- API endpoints are contract tested via `test/mock-server.js` (real server route coverage in progress)
 - CI runs on Node 18, 20, 22

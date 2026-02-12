@@ -7,6 +7,12 @@
 import { api } from '../api.js';
 import { showToast } from './toast.js';
 import { escapeHtml, truncate } from '../utils/html.js';
+import { formatTimeAgoOrDate } from '../utils/formatting.js';
+import { getBeadPriority } from '../shared/beads.js';
+import { BEAD_DETAIL, WORK_REFRESH } from '../shared/events.js';
+import { TIMING_MS } from '../shared/timing.js';
+import { getStaggerClass } from '../shared/animations.js';
+import { parseCloseReason } from '../shared/close-reason.js';
 
 // Issue type icons
 const TYPE_ICONS = {
@@ -29,81 +35,7 @@ const STATUS_CONFIG = {
   blocked: { icon: 'block', class: 'status-blocked', label: 'Blocked' },
 };
 
-// GitHub repo mapping for known rigs
-// Format: { rigName: 'org/repo' } or { beadPrefix: 'org/repo' }
-// Configure this mapping to link beads/PRs to your GitHub repos
-const GITHUB_REPOS = {
-  // Example: Map rig names to GitHub repos
-  // 'my-project': 'myorg/my-project',
-  // 'another-rig': 'myorg/another-repo',
-
-  // Example: Map bead ID prefixes to repos
-  // 'proj': 'myorg/project-repo',
-};
-
-/**
- * Get GitHub repo for a bead based on its ID or rig
- */
-function getGitHubRepoForBead(beadId) {
-  if (!beadId) return null;
-
-  // Try to match by bead prefix (e.g., "hq-123" → "hq")
-  const prefixMatch = beadId.match(/^([a-z]+)-/i);
-  if (prefixMatch) {
-    const prefix = prefixMatch[1].toLowerCase();
-    if (GITHUB_REPOS[prefix]) return GITHUB_REPOS[prefix];
-  }
-
-  // Try to match by rig name directly
-  for (const [key, repo] of Object.entries(GITHUB_REPOS)) {
-    if (repo && beadId.toLowerCase().includes(key.toLowerCase())) {
-      return repo;
-    }
-  }
-
-  // Default: try the first available repo
-  for (const repo of Object.values(GITHUB_REPOS)) {
-    if (repo) return repo;
-  }
-
-  return null;
-}
-
-/**
- * Parse close_reason for commit/PR references and make them clickable
- */
-function parseCloseReason(text, beadId) {
-  if (!text) return '';
-
-  let result = escapeHtml(text);
-  const repo = getGitHubRepoForBead(beadId);
-
-  // Replace commit references with links
-  result = result.replace(/commit\s+([a-f0-9]{7,40})/gi, (match, hash) => {
-    if (repo) {
-      // Link to actual GitHub commit
-      const url = `https://github.com/${repo}/commit/${hash}`;
-      return `<a href="${url}" target="_blank" class="commit-link" data-commit="${hash}" title="View on GitHub">${match}</a>`;
-    } else {
-      // Fallback: copy to clipboard
-      return `<a href="#" class="commit-link commit-copy" data-commit="${hash}" title="Click to copy">${match}</a>`;
-    }
-  });
-
-  // Replace PR references with links
-  result = result.replace(/PR\s*#?(\d+)/gi, (match, num) => {
-    if (repo) {
-      // Link to actual GitHub PR
-      const url = `https://github.com/${repo}/pull/${num}`;
-      return `<a href="${url}" target="_blank" class="pr-link" data-pr="${num}" title="View on GitHub">${match}</a>`;
-    } else {
-      // Fallback: copy to clipboard
-      return `<a href="#" class="pr-link pr-copy" data-pr="${num}" title="Click to copy">${match}</a>`;
-    }
-  });
-
-  return result;
-}
+// GitHub repo mapping is configured in `js/shared/github-repos.js`.
 
 /**
  * Render the work list
@@ -237,7 +169,7 @@ async function handleWorkAction(action, beadId, btn) {
     if (result && result.success) {
       showToast(`Work ${action === 'done' ? 'completed' : action + 'ed'}: ${beadId}`, 'success');
       // Trigger work list refresh
-      document.dispatchEvent(new CustomEvent('work:refresh'));
+      document.dispatchEvent(new CustomEvent(WORK_REFRESH));
     } else if (result) {
       showToast(`Failed: ${result.error || 'Unknown error'}`, 'error');
     }
@@ -257,10 +189,11 @@ function renderBeadCard(bead, index) {
   const statusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.open;
   const typeIcon = TYPE_ICONS[bead.issue_type] || 'assignment';
   const assignee = bead.assignee ? bead.assignee.split('/').pop() : null;
+  const priority = getBeadPriority(bead);
 
   return `
-    <div class="bead-card ${statusConfig.class} animate-spawn stagger-${Math.min(index, 6)}"
-         data-bead-id="${bead.id}">
+	    <div class="bead-card ${statusConfig.class} animate-spawn ${getStaggerClass(index)}"
+	         data-bead-id="${bead.id}">
       <div class="bead-header">
         <div class="bead-status">
           <span class="material-icons">${statusConfig.icon}</span>
@@ -281,8 +214,8 @@ function renderBeadCard(bead, index) {
             ` : ''}
           </div>
         </div>
-        <div class="bead-priority priority-${bead.priority || 2}">
-          P${bead.priority || 2}
+        <div class="bead-priority priority-${priority}">
+          P${priority}
         </div>
       </div>
 
@@ -295,7 +228,7 @@ function renderBeadCard(bead, index) {
 
       <div class="bead-footer">
         <div class="bead-time">
-          ${bead.closed_at ? `Completed ${formatTime(bead.closed_at)}` : `Created ${formatTime(bead.created_at)}`}
+          ${bead.closed_at ? `Completed ${formatTimeAgoOrDate(bead.closed_at)}` : `Created ${formatTimeAgoOrDate(bead.created_at)}`}
         </div>
         ${status !== 'closed' ? `
           <div class="bead-actions">
@@ -322,7 +255,7 @@ function renderBeadCard(bead, index) {
  * Show bead detail modal
  */
 function showBeadDetail(beadId, bead) {
-  const event = new CustomEvent('bead:detail', { detail: { beadId, bead } });
+  const event = new CustomEvent(BEAD_DETAIL, { detail: { beadId, bead } });
   document.dispatchEvent(event);
 }
 
@@ -330,44 +263,5 @@ function showBeadDetail(beadId, bead) {
  * Show a small toast when copying
  */
 function showCopyToast(message) {
-  // Try to use the existing toast system
-  const event = new CustomEvent('toast:show', { detail: { message, type: 'success', duration: 2000 } });
-  document.dispatchEvent(event);
-
-  // Fallback: create a simple toast if no handler
-  setTimeout(() => {
-    const existingToast = document.querySelector('.copy-toast');
-    if (existingToast) existingToast.remove();
-
-    const toast = document.createElement('div');
-    toast.className = 'copy-toast';
-    toast.textContent = message;
-    toast.style.cssText = `
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--bg-elevated, #333);
-      color: var(--text-primary, #fff);
-      padding: 8px 16px;
-      border-radius: 4px;
-      font-size: 13px;
-      z-index: 9999;
-      animation: fadeInUp 0.2s ease;
-    `;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2000);
-  }, 0);
-}
-
-function formatTime(timestamp) {
-  if (!timestamp) return '';
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diff = now - date;
-
-  if (diff < 60000) return 'just now';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-  return date.toLocaleDateString();
+  showToast(message, 'success', TIMING_MS.FEEDBACK);
 }

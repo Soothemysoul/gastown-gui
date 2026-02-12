@@ -340,6 +340,120 @@ app.get('/api/github/repos', (req, res) => {
   res.json(repos);
 });
 
+// GitHub PRs + Issues (used by PRs/Issues views)
+const mockGitHubPRs = [
+  {
+    number: 101,
+    repo: 'web3dev1337/gastown',
+    rig: 'gastown',
+    title: 'Refactor: extract gateways and service layer',
+    url: 'https://github.com/web3dev1337/gastown/pull/101',
+    state: 'OPEN',
+    isDraft: false,
+    reviewDecision: 'REVIEW_REQUIRED',
+    headRefName: 'refactor/gateways',
+    updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    author: { login: 'web3dev1337' },
+  },
+  {
+    number: 88,
+    repo: 'web3dev1337/zoo-game',
+    rig: 'zoo-game',
+    title: 'Fix: mobile navbar layout regression',
+    url: 'https://github.com/web3dev1337/zoo-game/pull/88',
+    state: 'MERGED',
+    isDraft: false,
+    reviewDecision: 'APPROVED',
+    headRefName: 'fix/mobile-navbar',
+    updatedAt: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(),
+    author: { login: 'contributor-1' },
+  },
+  {
+    number: 42,
+    repo: 'web3dev1337/ai-claude-standards',
+    rig: 'ai-claude-standards',
+    title: 'Docs: clarify agent handoff process',
+    url: 'https://github.com/web3dev1337/ai-claude-standards/pull/42',
+    state: 'CLOSED',
+    isDraft: true,
+    reviewDecision: 'CHANGES_REQUESTED',
+    headRefName: 'docs/handoff',
+    updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    author: { login: 'contributor-2' },
+  },
+];
+
+app.get('/api/github/prs', (req, res) => {
+  const state = String(req.query.state || 'open').toLowerCase();
+  const filtered = state === 'all'
+    ? mockGitHubPRs
+    : mockGitHubPRs.filter(pr => String(pr.state || '').toLowerCase() === state);
+  res.json(filtered);
+});
+
+app.get('/api/github/pr/:repo/:number', (req, res) => {
+  const repo = String(req.params.repo || '');
+  const number = Number(req.params.number);
+  const pr = mockGitHubPRs.find(p => p.repo === repo && p.number === number);
+  if (!pr) return res.status(404).json({ error: 'PR not found' });
+  res.json(pr);
+});
+
+const mockGitHubIssues = [
+  {
+    number: 17,
+    repo: 'web3dev1337/gastown',
+    rig: 'gastown',
+    title: 'Investigate intermittent WebSocket disconnects',
+    url: 'https://github.com/web3dev1337/gastown/issues/17',
+    state: 'open',
+    labels: [{ name: 'bug', color: 'd73a4a' }, { name: 'ws', color: '0366d6' }],
+    assignees: [{ login: 'web3dev1337' }],
+    author: { login: 'reporter-1' },
+    updatedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    number: 9,
+    repo: 'web3dev1337/zoo-game',
+    rig: 'zoo-game',
+    title: 'Add “crews” panel to dashboard quick actions',
+    url: 'https://github.com/web3dev1337/zoo-game/issues/9',
+    state: 'open',
+    labels: [{ name: 'enhancement', color: 'a2eeef' }],
+    assignees: [],
+    author: { login: 'reporter-2' },
+    updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    number: 3,
+    repo: 'web3dev1337/ai-claude-standards',
+    rig: 'ai-claude-standards',
+    title: 'Document enterprise refactor patterns (PoEAA)',
+    url: 'https://github.com/web3dev1337/ai-claude-standards/issues/3',
+    state: 'closed',
+    labels: [{ name: 'docs', color: '0075ca' }],
+    assignees: [{ login: 'contributor-2' }],
+    author: { login: 'reporter-3' },
+    updatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+];
+
+app.get('/api/github/issues', (req, res) => {
+  const state = String(req.query.state || 'open').toLowerCase();
+  const filtered = state === 'all'
+    ? mockGitHubIssues
+    : mockGitHubIssues.filter(issue => String(issue.state || '').toLowerCase() === state);
+  res.json(filtered);
+});
+
+app.get('/api/github/issue/:repo/:number', (req, res) => {
+  const repo = String(req.params.repo || '');
+  const number = Number(req.params.number);
+  const issue = mockGitHubIssues.find(i => i.repo === repo && i.number === number);
+  if (!issue) return res.status(404).json({ error: 'Issue not found' });
+  res.json(issue);
+});
+
 // Polecat (worker) management
 const mockPolecats = new Map([
   ['zoo-game/polecat-1', { rig: 'zoo-game', name: 'polecat-1', status: 'running', started: new Date().toISOString() }],
@@ -853,16 +967,21 @@ function stopActivitySimulation() {
 }
 
 // Start server
-// Use 5678 by default to avoid port conflicts with Claude orchestrator (3000)
-// and to keep production server port (5555) free
-const PORT = process.env.PORT || 5678;
-console.log(`[Mock Server] PORT configured as: ${PORT}`);
+const DEFAULT_PORT = 5678;
 
-export function startMockServer() {
+function normalizePort(value) {
+  if (value === undefined || value === null || value === '') return DEFAULT_PORT;
+  const port = Number(value);
+  return Number.isFinite(port) && port >= 0 ? port : DEFAULT_PORT;
+}
+
+export function startMockServer({ port } = {}) {
+  const requestedPort = normalizePort(port ?? process.env.PORT);
   return new Promise((resolve) => {
-    console.log(`[Mock Server] Starting on port ${PORT}...`);
-    server.listen(PORT, () => {
-      console.log(`[Mock Server] Running on http://localhost:${PORT}`);
+    console.log(`[Mock Server] Starting on port ${requestedPort || '(ephemeral)'}...`);
+    server.listen(requestedPort, '127.0.0.1', () => {
+      const actualPort = server.address()?.port ?? requestedPort;
+      console.log(`[Mock Server] Running on http://127.0.0.1:${actualPort}`);
       startActivitySimulation();
       resolve(server);
     });

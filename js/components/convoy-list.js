@@ -6,6 +6,10 @@
  */
 
 import { escapeHtml, escapeAttr, truncate } from '../utils/html.js';
+import { formatTimeAgoOrDate } from '../utils/formatting.js';
+import { TIMING_MS } from '../shared/timing.js';
+import { AGENT_NUDGE, CONVOY_DETAIL, CONVOY_ESCALATE, ISSUE_DETAIL, SLING_OPEN } from '../shared/events.js';
+import { getStaggerClass } from '../shared/animations.js';
 
 // Status icons for convoys
 const STATUS_ICONS = {
@@ -161,7 +165,7 @@ function toggleConvoyExpand(card, convoyId) {
     const detail = card.querySelector('.convoy-detail');
     if (detail) {
       detail.style.maxHeight = '0';
-      setTimeout(() => detail.remove(), 300);
+      setTimeout(() => detail.remove(), TIMING_MS.ANIMATION);
     }
   } else {
     expandedConvoys.add(convoyId);
@@ -217,7 +221,7 @@ function renderConvoyCard(convoy, index) {
   const isExpanded = expandedConvoys.has(convoy.id);
 
   return `
-    <div class="convoy-card animate-spawn stagger-${Math.min(index, 6)} ${isExpanded ? 'expanded' : ''}"
+    <div class="convoy-card animate-spawn ${getStaggerClass(index)} ${isExpanded ? 'expanded' : ''}"
          data-convoy-id="${escapeAttr(convoy.id)}"
          data-status="${escapeAttr(status)}"
          data-issues='${escapeAttr(JSON.stringify(convoy.issues || []))}'
@@ -265,7 +269,7 @@ function renderConvoyCard(convoy, index) {
           ${renderConvoyStats(convoy)}
         </div>
         <div class="convoy-time">
-          ${formatTime(convoy.created_at || convoy.timestamp)}
+          ${formatTimeAgoOrDate(convoy.created_at || convoy.timestamp, { justNowLabel: 'Just now' })}
         </div>
       </div>
     </div>
@@ -466,7 +470,7 @@ function calculateProgress(convoy) {
  * Show convoy detail modal
  */
 function showConvoyDetail(convoyId) {
-  const event = new CustomEvent('convoy:detail', { detail: { convoyId } });
+  const event = new CustomEvent(CONVOY_DETAIL, { detail: { convoyId } });
   document.dispatchEvent(event);
 }
 
@@ -474,7 +478,7 @@ function showConvoyDetail(convoyId) {
  * Open sling modal for a specific convoy
  */
 function openSlingForConvoy(convoyId) {
-  const event = new CustomEvent('sling:open', { detail: { convoyId } });
+  const event = new CustomEvent(SLING_OPEN, { detail: { convoyId } });
   document.dispatchEvent(event);
   // Also trigger the modal
   document.getElementById('sling-btn')?.click();
@@ -484,7 +488,7 @@ function openSlingForConvoy(convoyId) {
  * Show issue detail
  */
 function showIssueDetail(issueId) {
-  const event = new CustomEvent('issue:detail', { detail: { issueId } });
+  const event = new CustomEvent(ISSUE_DETAIL, { detail: { issueId } });
   document.dispatchEvent(event);
 }
 
@@ -492,7 +496,7 @@ function showIssueDetail(issueId) {
  * Open nudge modal for a worker
  */
 function openNudgeModal(workerId) {
-  const event = new CustomEvent('agent:nudge', { detail: { agentId: workerId } });
+  const event = new CustomEvent(AGENT_NUDGE, { detail: { agentId: workerId } });
   document.dispatchEvent(event);
 }
 
@@ -500,7 +504,7 @@ function openNudgeModal(workerId) {
  * Open escalation modal for a convoy
  */
 function openEscalationModal(convoyId, convoyName) {
-  const event = new CustomEvent('convoy:escalate', {
+  const event = new CustomEvent(CONVOY_ESCALATE, {
     detail: { convoyId, convoyName }
   });
   document.dispatchEvent(event);
@@ -516,20 +520,4 @@ function getWorkerInitials(name) {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
   return name.slice(0, 2).toUpperCase();
-}
-
-function formatTime(timestamp) {
-  if (!timestamp) return '';
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diff = now - date;
-
-  // Less than 1 minute
-  if (diff < 60000) return 'Just now';
-  // Less than 1 hour
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-  // Less than 24 hours
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-  // Otherwise show date
-  return date.toLocaleDateString();
 }

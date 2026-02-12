@@ -4,6 +4,8 @@
  * Provides non-intrusive notifications for user feedback.
  */
 
+import { escapeHtml } from '../utils/html.js';
+
 // Toast container reference
 let toastContainer = null;
 
@@ -171,7 +173,7 @@ export function showLoading(message) {
         <span class="material-icons toast-icon">check_circle</span>
         <span class="toast-message">${escapeHtml(newMessage)}</span>
       `;
-      setTimeout(() => dismissToast(toast), 2000);
+      setTimeout(() => dismissToast(toast), TOAST_DURATIONS.success);
     },
     error: (newMessage) => {
       toast.className = 'toast toast-error show';
@@ -179,15 +181,7 @@ export function showLoading(message) {
         <span class="material-icons toast-icon">error</span>
         <span class="toast-message">${escapeHtml(newMessage)}</span>
       `;
-      setTimeout(() => dismissToast(toast), 4000);
+      setTimeout(() => dismissToast(toast), TOAST_DURATIONS.error);
     },
   };
-}
-
-// Utility function
-function escapeHtml(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
 }

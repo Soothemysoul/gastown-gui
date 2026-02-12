@@ -4,6 +4,9 @@
  * Utilities for optimizing rendering and reducing jank.
  */
 
+const IDLE_CALLBACK_FALLBACK_DELAY_MS = 1;
+const COUNTER_CHANGE_CLASS_DURATION_MS = 300;
+
 /**
  * Debounce a function
  * @param {Function} fn - Function to debounce
@@ -42,7 +45,7 @@ export function whenIdle(callback, timeout = 2000) {
   if ('requestIdleCallback' in window) {
     return requestIdleCallback(callback, { timeout });
   }
-  return setTimeout(callback, 1);
+  return setTimeout(callback, IDLE_CALLBACK_FALLBACK_DELAY_MS);
 }
 
 /**
@@ -296,7 +299,7 @@ export function animateCounter(element, targetValue, options = {}) {
     if (progress < 1) {
       requestAnimationFrame(update);
     } else {
-      setTimeout(() => element.classList.remove('counter-change'), 300);
+      setTimeout(() => element.classList.remove('counter-change'), COUNTER_CHANGE_CLASS_DURATION_MS);
     }
   }
 
