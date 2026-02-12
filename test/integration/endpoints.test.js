@@ -614,6 +614,50 @@ describe('Service Management', () => {
     expect(data.service).toHaveProperty('status', 'stopped');
   });
 
+  it('should reject refinery start without rig param', async () => {
+    const { status, data } = await api('/api/service/refinery/up', {
+      method: 'POST',
+    });
+
+    expect(status).toBe(400);
+    expect(data).toHaveProperty('error');
+    expect(data.error).toContain('rig');
+  });
+
+  it('should start refinery with rig param', async () => {
+    const { status, data, ok } = await api('/api/service/refinery/up', {
+      method: 'POST',
+      body: JSON.stringify({ rig: 'my-rig' }),
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data.service).toHaveProperty('rig', 'my-rig');
+  });
+
+  it('should start mayor without rig (no rig required)', async () => {
+    const { status, data, ok } = await api('/api/service/mayor/up', {
+      method: 'POST',
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data.service).toHaveProperty('status', 'running');
+  });
+
+  it('should start deacon without rig (no rig required)', async () => {
+    const { status, data, ok } = await api('/api/service/deacon/up', {
+      method: 'POST',
+    });
+
+    expect(ok).toBe(true);
+    expect(status).toBe(200);
+    expect(data).toHaveProperty('success', true);
+    expect(data.service).toHaveProperty('status', 'running');
+  });
+
   it('should restart a service', async () => {
     const { status, data, ok } = await api('/api/service/deacon/restart', {
       method: 'POST',
