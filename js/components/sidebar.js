@@ -228,6 +228,8 @@ function renderServiceControls(agentsByRole) {
         const agents = agentsByRole[svc.name] || [];
         const isRunning = agents.some(a => a.running);
         const statusClass = isRunning ? 'running' : 'stopped';
+        const rigName = agents[0]?.rig || '';
+        const rigAttr = rigName ? ` data-rig="${rigName}"` : '';
 
         return `
           <div class="service-item" data-service="${svc.name}">
@@ -238,14 +240,14 @@ function renderServiceControls(agentsByRole) {
             </div>
             <div class="service-actions">
               ${isRunning ? `
-                <button class="btn btn-icon btn-xs btn-danger-ghost" data-action="stop" data-service="${svc.name}" title="Stop ${svc.label}">
+                <button class="btn btn-icon btn-xs btn-danger-ghost" data-action="stop" data-service="${svc.name}"${rigAttr} title="Stop ${svc.label}">
                   <span class="material-icons">stop</span>
                 </button>
-                <button class="btn btn-icon btn-xs" data-action="restart" data-service="${svc.name}" title="Restart ${svc.label}">
+                <button class="btn btn-icon btn-xs" data-action="restart" data-service="${svc.name}"${rigAttr} title="Restart ${svc.label}">
                   <span class="material-icons">refresh</span>
                 </button>
               ` : `
-                <button class="btn btn-icon btn-xs btn-success-ghost" data-action="start" data-service="${svc.name}" title="Start ${svc.label}">
+                <button class="btn btn-icon btn-xs btn-success-ghost" data-action="start" data-service="${svc.name}"${rigAttr} title="Start ${svc.label}">
                   <span class="material-icons">play_arrow</span>
                 </button>
               `}
@@ -266,7 +268,8 @@ function setupServiceControls(container) {
       e.stopPropagation();
       const action = btn.dataset.action;
       const service = btn.dataset.service;
-      await handleServiceAction(action, service, btn);
+      const rig = btn.dataset.rig || null;
+      await handleServiceAction(action, service, btn, rig);
     });
   });
 }
@@ -274,7 +277,7 @@ function setupServiceControls(container) {
 /**
  * Handle service start/stop/restart action
  */
-async function handleServiceAction(action, service, btn) {
+async function handleServiceAction(action, service, btn, rig) {
   const originalIcon = btn.innerHTML;
   btn.innerHTML = '<span class="material-icons spinning">sync</span>';
   btn.disabled = true;
@@ -283,7 +286,7 @@ async function handleServiceAction(action, service, btn) {
     let result;
     switch (action) {
       case 'start':
-        result = await api.startService(service);
+        result = await api.startService(service, rig);
         break;
       case 'stop':
         result = await api.stopService(service);

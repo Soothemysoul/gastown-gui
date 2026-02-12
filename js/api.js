@@ -276,8 +276,8 @@ export const api = {
   },
 
   // === Service Controls ===
-  startService(name) {
-    return this.post(`/api/service/${encodeURIComponent(name)}/up`);
+  startService(name, rig) {
+    return this.post(`/api/service/${encodeURIComponent(name)}/up`, rig ? { rig } : undefined);
   },
 
   stopService(name) {
