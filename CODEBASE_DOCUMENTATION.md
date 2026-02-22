@@ -258,7 +258,16 @@ frontend/src/components/shared/
 ├─ EmptyState.vue - Icon + message + slot for actions
 ├─ ErrorState.vue - Error icon + message + retry button
 ├─ FilterGroup.vue - Toggle button group (v-model:modelValue)
-└─ ToastContainer.vue - Teleported toast notifications (uses useToast)
+├─ ToastContainer.vue - Teleported toast notifications (uses useToast)
+├─ BaseModal.vue - Reusable modal wrapper (Teleport to #modal-target, v-model, Escape/overlay close)
+└─ Autocomplete.vue - Generic search input with dropdown (search/renderItem/onSelect props)
+
+frontend/src/components/modals/
+├─ SlingModal.vue - Bead sling dialog (Autocomplete for bead search + target dropdown with optgroups)
+├─ NewRigModal.vue - Add rig dialog (GitHub/GitLab repo picker with search/filter, local path support)
+├─ PeekModal.vue - Agent output viewer (auto-refresh via usePolling at 2s, transcript tab)
+├─ NewFormulaModal.vue - Formula create/edit form (name, description, template)
+└─ NewCrewModal.vue - Crew create form (name, rig selection)
 
 frontend/src/components/views/
 ├─ DashboardView.vue - Town status overview (/)

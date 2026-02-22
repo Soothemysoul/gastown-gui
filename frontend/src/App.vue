@@ -13,6 +13,13 @@
     <!-- Modal teleport target -->
     <div id="modal-target"></div>
 
+    <!-- Global modals -->
+    <SlingModal />
+    <NewRigModal />
+    <PeekModal />
+    <NewFormulaModal />
+    <NewCrewModal />
+
     <ToastContainer />
   </div>
 </template>
@@ -29,6 +36,11 @@ import AppSidebar from './components/layout/AppSidebar.vue'
 import ActivityFeed from './components/layout/ActivityFeed.vue'
 import StatusBar from './components/layout/StatusBar.vue'
 import ToastContainer from './components/shared/ToastContainer.vue'
+import SlingModal from './components/modals/SlingModal.vue'
+import NewRigModal from './components/modals/NewRigModal.vue'
+import PeekModal from './components/modals/PeekModal.vue'
+import NewFormulaModal from './components/modals/NewFormulaModal.vue'
+import NewCrewModal from './components/modals/NewCrewModal.vue'
 
 const statusStore = useStatusStore()
 const eventStore = useEventStore()
