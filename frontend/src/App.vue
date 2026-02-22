@@ -13,12 +13,19 @@
     <!-- Modal teleport target -->
     <div id="modal-target"></div>
 
-    <!-- Modals -->
+    <!-- Simple modals -->
     <NewConvoyModal />
     <NewBeadModal />
     <MailComposeModal />
     <HelpModal />
     <EscalationModal />
+
+    <!-- Complex modals -->
+    <SlingModal />
+    <NewRigModal />
+    <PeekModal />
+    <NewFormulaModal />
+    <NewCrewModal />
 
     <ToastContainer />
   </div>
@@ -41,6 +48,11 @@ import NewBeadModal from './components/modals/NewBeadModal.vue'
 import MailComposeModal from './components/modals/MailComposeModal.vue'
 import HelpModal from './components/modals/HelpModal.vue'
 import EscalationModal from './components/modals/EscalationModal.vue'
+import SlingModal from './components/modals/SlingModal.vue'
+import NewRigModal from './components/modals/NewRigModal.vue'
+import PeekModal from './components/modals/PeekModal.vue'
+import NewFormulaModal from './components/modals/NewFormulaModal.vue'
+import NewCrewModal from './components/modals/NewCrewModal.vue'
 
 const statusStore = useStatusStore()
 const eventStore = useEventStore()
