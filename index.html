@@ -563,10 +563,18 @@
           </button>
         </div>
         <form class="modal-body" id="new-rig-form">
-          <!-- GitHub Repo Picker -->
+          <!-- Repo Picker (GitHub + GitLab) -->
           <div class="form-group">
-            <label>Pick from GitHub</label>
-            <div class="github-repo-picker">
+            <label>Pick from Repository</label>
+            <div class="repo-picker-tabs">
+              <button type="button" class="repo-tab active" data-provider="github">
+                <span class="material-icons">code</span> GitHub
+              </button>
+              <button type="button" class="repo-tab" data-provider="gitlab">
+                <span class="material-icons">code</span> GitLab
+              </button>
+            </div>
+            <div class="repo-picker-panel" id="repo-picker-github">
               <button type="button" class="btn btn-secondary btn-block" id="github-repo-picker-btn">
                 <span class="material-icons">cloud_download</span>
                 <span class="btn-text">Load My Repositories</span>
@@ -574,6 +582,18 @@
               <div class="github-repo-list hidden" id="github-repo-list">
                 <input type="text" class="github-repo-search" id="github-repo-search" placeholder="Search repos...">
                 <div class="github-repo-items" id="github-repo-items">
+                  <!-- Populated by JS -->
+                </div>
+              </div>
+            </div>
+            <div class="repo-picker-panel hidden" id="repo-picker-gitlab">
+              <button type="button" class="btn btn-secondary btn-block" id="gitlab-repo-picker-btn">
+                <span class="material-icons">cloud_download</span>
+                <span class="btn-text">Load My Repositories</span>
+              </button>
+              <div class="github-repo-list hidden" id="gitlab-repo-list">
+                <input type="text" class="github-repo-search" id="gitlab-repo-search" placeholder="Search repos...">
+                <div class="github-repo-items" id="gitlab-repo-items">
                   <!-- Populated by JS -->
                 </div>
               </div>

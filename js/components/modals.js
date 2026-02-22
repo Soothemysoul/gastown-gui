@@ -795,8 +795,9 @@ function initHelpModal(element) {
 
 // === New Rig Modal ===
 
-// Cache for GitHub repos
+// Cache for repos
 let cachedGitHubRepos = null;
+let cachedGitLabRepos = null;
 
 function initNewRigModal(element, data) {
   const form = element.querySelector('form');
@@ -810,6 +811,33 @@ function initNewRigModal(element, data) {
     pickerBtn.querySelector('.btn-text').textContent = 'Load My Repositories';
     pickerBtn.disabled = false;
   }
+
+  // Reset GitLab repo picker state
+  const glRepoList = document.getElementById('gitlab-repo-list');
+  const glPickerBtn = document.getElementById('gitlab-repo-picker-btn');
+  if (glRepoList) glRepoList.classList.add('hidden');
+  if (glPickerBtn) {
+    glPickerBtn.querySelector('.btn-text').textContent = 'Load My Repositories';
+    glPickerBtn.disabled = false;
+  }
+
+  // Reset tabs to GitHub
+  element.querySelectorAll('.repo-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.provider === 'github');
+  });
+  document.getElementById('repo-picker-github')?.classList.remove('hidden');
+  document.getElementById('repo-picker-gitlab')?.classList.add('hidden');
+
+  // Set up tab switching
+  element.querySelectorAll('.repo-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      element.querySelectorAll('.repo-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const provider = tab.dataset.provider;
+      document.getElementById('repo-picker-github')?.classList.toggle('hidden', provider !== 'github');
+      document.getElementById('repo-picker-gitlab')?.classList.toggle('hidden', provider !== 'gitlab');
+    });
+  });
 
   // Auto-sanitize rig name: replace hyphens, dots, spaces with underscores
   const nameInput = element.querySelector('[name="name"]');
@@ -825,11 +853,20 @@ function initNewRigModal(element, data) {
   // Set up GitHub repo picker button
   pickerBtn?.addEventListener('click', loadGitHubRepos, { once: true });
 
+  // Set up GitLab repo picker button
+  glPickerBtn?.addEventListener('click', loadGitLabRepos, { once: true });
+
   // Set up search filtering with debounce
   const searchInput = document.getElementById('github-repo-search');
   const debouncedFilter = debounce((value) => filterGitHubRepos(value), 150);
   searchInput?.addEventListener('input', (e) => {
     debouncedFilter(e.target.value);
+  });
+
+  const glSearchInput = document.getElementById('gitlab-repo-search');
+  const debouncedGlFilter = debounce((value) => filterGitLabRepos(value), 150);
+  glSearchInput?.addEventListener('input', (e) => {
+    debouncedGlFilter(e.target.value);
   });
 }
 
@@ -872,14 +909,81 @@ async function loadGitHubRepos() {
 
 function renderGitHubRepos(repos) {
   const repoItems = document.getElementById('github-repo-items');
-  if (!repoItems) return;
+  renderRepoItems(repoItems, repos);
+}
+
+function filterGitHubRepos(query) {
+  if (!cachedGitHubRepos) return;
+
+  const q = query.toLowerCase();
+  const filtered = cachedGitHubRepos.filter(repo =>
+    repo.name.toLowerCase().includes(q) ||
+    repo.nameWithOwner.toLowerCase().includes(q) ||
+    (repo.description || '').toLowerCase().includes(q)
+  );
+  renderGitHubRepos(filtered);
+}
+
+async function loadGitLabRepos() {
+  const pickerBtn = document.getElementById('gitlab-repo-picker-btn');
+  const repoList = document.getElementById('gitlab-repo-list');
+  const repoItems = document.getElementById('gitlab-repo-items');
+
+  if (!pickerBtn || !repoList || !repoItems) return;
+
+  // Show loading state
+  pickerBtn.disabled = true;
+  pickerBtn.querySelector('.btn-text').textContent = 'Loading...';
+  repoItems.innerHTML = '<div class="github-repo-loading"><span class="loading-spinner"></span> Loading repositories...</div>';
+  repoList.classList.remove('hidden');
+
+  try {
+    if (!cachedGitLabRepos) {
+      cachedGitLabRepos = await api.getGitLabRepos({ limit: 100 });
+    }
+
+    renderRepoItems(repoItems, cachedGitLabRepos);
+    pickerBtn.querySelector('.btn-text').textContent = 'Refresh List';
+    pickerBtn.disabled = false;
+
+    pickerBtn.addEventListener('click', async () => {
+      cachedGitLabRepos = null;
+      await loadGitLabRepos();
+    }, { once: true });
+
+  } catch (err) {
+    repoItems.innerHTML = `<div class="github-repo-empty">Failed to load repos: ${escapeHtml(err.message)}</div>`;
+    pickerBtn.querySelector('.btn-text').textContent = 'Retry';
+    pickerBtn.disabled = false;
+    pickerBtn.addEventListener('click', loadGitLabRepos, { once: true });
+  }
+}
+
+function filterGitLabRepos(query) {
+  if (!cachedGitLabRepos) return;
+
+  const q = query.toLowerCase();
+  const filtered = cachedGitLabRepos.filter(repo =>
+    repo.name.toLowerCase().includes(q) ||
+    repo.nameWithOwner.toLowerCase().includes(q) ||
+    (repo.description || '').toLowerCase().includes(q)
+  );
+  const repoItems = document.getElementById('gitlab-repo-items');
+  if (repoItems) renderRepoItems(repoItems, filtered);
+}
+
+/**
+ * Render repo items into a container (shared by GitHub and GitLab)
+ */
+function renderRepoItems(container, repos) {
+  if (!container) return;
 
   if (!repos || repos.length === 0) {
-    repoItems.innerHTML = '<div class="github-repo-empty">No repositories found</div>';
+    container.innerHTML = '<div class="github-repo-empty">No repositories found</div>';
     return;
   }
 
-  repoItems.innerHTML = repos.map(repo => `
+  container.innerHTML = repos.map(repo => `
     <div class="github-repo-item ${repo.isPrivate ? 'private' : ''}"
          data-name="${escapeAttr(repo.name)}"
          data-url="${escapeAttr(repo.url)}">
@@ -900,21 +1004,9 @@ function renderGitHubRepos(repos) {
   `).join('');
 
   // Add click handlers
-  repoItems.querySelectorAll('.github-repo-item').forEach(item => {
+  container.querySelectorAll('.github-repo-item').forEach(item => {
     item.addEventListener('click', () => selectGitHubRepo(item));
   });
-}
-
-function filterGitHubRepos(query) {
-  if (!cachedGitHubRepos) return;
-
-  const q = query.toLowerCase();
-  const filtered = cachedGitHubRepos.filter(repo =>
-    repo.name.toLowerCase().includes(q) ||
-    repo.nameWithOwner.toLowerCase().includes(q) ||
-    (repo.description || '').toLowerCase().includes(q)
-  );
-  renderGitHubRepos(filtered);
 }
 
 function selectGitHubRepo(item) {

@@ -1264,6 +1264,43 @@ app.post('/api/rigs/:name/boot', async (req, res) => {
   }
 });
 
+// === GitLab Repos ===
+
+// List GitLab repos (for rig picker)
+app.get('/api/gitlab/repos', async (req, res) => {
+  const limit = parseInt(req.query.limit, 10) || 100;
+
+  // Check cache
+  if (req.query.refresh !== 'true') {
+    const cached = getCached('gitlab_repos');
+    if (cached) return res.json(cached);
+  }
+
+  try {
+    const { stdout } = await execFileAsync('glab', [
+      'api', `projects?membership=true&per_page=${limit}&order_by=last_activity_at`,
+    ], { timeout: 15000 });
+
+    const raw = JSON.parse(String(stdout || '') || '[]');
+    const repos = raw.map(p => ({
+      name: p.name,
+      nameWithOwner: p.path_with_namespace,
+      description: p.description || '',
+      url: p.ssh_url_to_repo || p.http_url_to_repo,
+      webUrl: p.web_url,
+      isPrivate: p.visibility === 'private',
+      pushedAt: p.last_activity_at,
+      primaryLanguage: null,
+    }));
+
+    setCache('gitlab_repos', repos, 5 * 60 * 1000);
+    res.json(repos);
+  } catch (err) {
+    console.error('[GitLab] Failed to list repos:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // === Crew Management ===
 
 // List all crews

@@ -331,6 +331,15 @@ export const api = {
     const query = params.toString();
     return this.get(`/api/github/repos${query ? '?' + query : ''}`);
   },
+
+  // === GitLab Repos ===
+  getGitLabRepos(options = {}) {
+    const params = new URLSearchParams();
+    if (options.limit) params.set('limit', options.limit);
+    if (options.refresh) params.set('refresh', 'true');
+    const query = params.toString();
+    return this.get(`/api/gitlab/repos${query ? '?' + query : ''}`);
+  },
 };
 
 // WebSocket Client
