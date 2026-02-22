@@ -28,3 +28,8 @@ coverage/
 # Build artifacts
 *.tgz
 dist/
+
+# Gas Town (added by gt)
+.runtime/
+.claude/commands/
+.logs/
