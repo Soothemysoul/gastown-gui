@@ -200,9 +200,30 @@ refactoring-analysis/trace/ - Sanitized prompt/trace exports
 frontend/package.json - Vue 3, vue-router, pinia, vite, @vitejs/plugin-vue
 frontend/vite.config.js - Vite config: proxy /api→:7667, /ws→ws://:7667
 frontend/index.html - Vite entry with Google Fonts (Inter) + Material Icons
-frontend/src/main.js - createApp + Pinia + Router
+frontend/src/main.js - createApp + Pinia + Router; imports reset.css + variables.css
 frontend/src/App.vue - Root component with router-view
 frontend/src/router/index.js - 11 lazy-loaded routes
+
+frontend/src/assets/styles/
+├─ reset.css - Browser reset (ported from css/)
+├─ variables.css - CSS custom properties: colors, spacing, z-index (ported from css/)
+├─ layout.css - Grid/flex layouts, responsive breakpoints (ported from css/)
+├─ components.css - Component-specific styles (ported from css/)
+└─ animations.css - Transitions & keyframes (ported from css/)
+
+frontend/src/utils/
+├─ formatting.js - Date/number formatters (ported from js/utils/)
+├─ html.js - escapeHtml, escapeAttr, truncate, capitalize (ported from js/utils/, DOM helpers removed)
+└─ performance.js - Debounce, throttle, memoize, perf (ported from js/utils/, DOM classes removed)
+
+frontend/src/constants/
+├─ agent-types.js - Agent type definitions, icons, colors (ported from js/shared/, DOM badge removed)
+├─ events.js - Custom event name constants (ported from js/shared/, dispatchEvent/onEvent removed)
+├─ timing.js - Shared timing constants (ported from js/shared/)
+├─ beads.js - Bead domain helpers/constants (ported from js/shared/)
+├─ close-reason.js - close_reason formatting (ported from js/shared/, import paths updated)
+├─ github-repos.js - Bead/rig → GitHub repo mapping (ported from js/shared/)
+└─ animations.js - Shared animation helpers (ported from js/shared/)
 
 frontend/src/components/views/
 ├─ DashboardView.vue - Town status overview (/)
