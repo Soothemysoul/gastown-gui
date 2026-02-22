@@ -1,39 +1,8 @@
 import path from 'node:path';
 import fsPromises from 'node:fs/promises';
 
-function parseTmuxPolecatSessions(output, rigNames = []) {
-  const sessions = new Set();
-  const rigsByLongest = [...new Set(rigNames)].filter(Boolean).sort((a, b) => b.length - a.length);
-
-  for (const line of String(output || '').split('\n')) {
-    const match = line.match(/^(gt-[^:]+):/);
-    if (!match) continue;
-
-    const session = match[1].replace('gt-', '');
-
-    // Prefer matching known rig names to disambiguate hyphens inside agent names.
-    let matched = false;
-    for (const rig of rigsByLongest) {
-      const prefix = `${rig}-`;
-      if (!session.startsWith(prefix)) continue;
-      const name = session.slice(prefix.length);
-      if (!name) continue;
-      sessions.add(`${rig}/${name}`);
-      matched = true;
-      break;
-    }
-
-    if (matched) continue;
-
-    // Fallback heuristic: treat last dash-separated segment as agent name.
-    const parts = session.split('-');
-    if (parts.length < 2) continue;
-    const name = parts.pop();
-    const rig = parts.join('-');
-    sessions.add(`${rig}/${name}`);
-  }
-
-  return sessions;
+function parseJsonOrNull(text) {
+  try { return JSON.parse(text); } catch { return null; }
 }
 
 async function readRigConfig({ gtRoot, rigName }) {
@@ -53,11 +22,10 @@ export class StatusService {
     missingRigConfigTtlMs = 60000,
   } = {}) {
     if (!gtGateway?.status) throw new Error('StatusService requires gtGateway.status()');
-    if (!tmuxGateway?.listSessions) throw new Error('StatusService requires tmuxGateway.listSessions()');
     if (!gtRoot) throw new Error('StatusService requires gtRoot');
 
     this._gt = gtGateway;
-    this._tmux = tmuxGateway;
+    this._tmux = tmuxGateway ?? null; // kept for interface compatibility, not used for running detection
     this._cache = cache ?? null;
     this._gtRoot = gtRoot;
     this._statusTtlMs = statusTtlMs;
@@ -81,9 +49,11 @@ export class StatusService {
   }
 
   async _fetchStatus() {
-    const [statusResult, sessionsText] = await Promise.all([
+    // Fetch gt status and polecat list in parallel
+    const [statusResult, polecatResult] = await Promise.all([
       this._gt.status({ fast: true, allowExitCodes: [0, 1] }),
-      this._tmux.listSessions(),
+      this._gt.exec(['polecat', 'list', '--all', '--json'], { timeoutMs: 10000 })
+        .catch(() => ({ ok: false, stdout: '' })),
     ]);
 
     if (!statusResult.ok) {
@@ -94,7 +64,29 @@ export class StatusService {
     if (!data) return { raw: statusResult.raw };
 
     const rigs = Array.isArray(data.rigs) ? data.rigs : [];
-    const runningPolecats = parseTmuxPolecatSessions(sessionsText, rigs.map(rig => rig?.name));
+
+    // Build set of running agent paths.
+    // gt status --json already has running: true/false for rig agents (witness, refinery).
+    const runningAgentPaths = new Set();
+
+    // From rig-level agents (witness, refinery have authoritative running field)
+    for (const rig of rigs) {
+      for (const agent of (rig.agents || [])) {
+        if (agent.running && agent.address) {
+          runningAgentPaths.add(agent.address);
+        }
+      }
+    }
+
+    // From polecat list
+    const polecats = polecatResult.ok
+      ? parseJsonOrNull((polecatResult.stdout || '').trim()) || []
+      : [];
+    for (const pc of polecats) {
+      if (pc.session_running && pc.rig && pc.name) {
+        runningAgentPaths.add(`${pc.rig}/${pc.name}`);
+      }
+    }
 
     for (const rig of rigs) {
       if (!rig?.name) continue;
@@ -105,18 +97,11 @@ export class StatusService {
       }
 
       for (const hook of rig.hooks || []) {
-        const agentPath = hook.agent;
-        hook.running = runningPolecats.has(agentPath);
-
-        // Compatibility: older systems may store polecats in a subdirectory
-        const polecatPath = String(agentPath || '').replace(/\//, '/polecats/');
-        if (!hook.running && polecatPath !== agentPath && runningPolecats.has(polecatPath)) {
-          hook.running = true;
-        }
+        hook.running = runningAgentPaths.has(hook.agent);
       }
     }
 
-    data.runningPolecats = Array.from(runningPolecats);
+    data.runningPolecats = Array.from(runningAgentPaths);
     return data;
   }
 

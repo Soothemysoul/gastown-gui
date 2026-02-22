@@ -23,7 +23,7 @@ export class BDGateway {
   }
 
   async list({ status } = {}) {
-    const args = ['--no-daemon', 'list'];
+    const args = ['list'];
     if (status) args.push(`--status=${status}`);
     args.push('--json');
 
@@ -33,7 +33,7 @@ export class BDGateway {
   }
 
   async search(query) {
-    const args = ['--no-daemon', query ? 'search' : 'list'];
+    const args = [query ? 'search' : 'list'];
     if (query) args.push(query);
     args.push('--json');
 
@@ -43,7 +43,7 @@ export class BDGateway {
   }
 
   async create({ title, description, priority, labels } = {}) {
-    const args = ['--no-daemon', 'new', title];
+    const args = ['new', title];
     if (description) args.push('--description', description);
     if (priority) args.push('--priority', priority);
     if (Array.isArray(labels)) {

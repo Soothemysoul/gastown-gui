@@ -218,10 +218,21 @@ function requireAgentPath(req, res) {
 // Check if a specific tmux session is running
 async function isSessionRunning(sessionName) {
   try {
-    const { stdout } = await execFileAsync('tmux', ['has-session', '-t', sessionName]);
+    // Try exact match first
+    await execFileAsync('tmux', ['has-session', '-t', sessionName]);
     return true;
   } catch {
-    return false;
+    // Exact match failed — try matching any session ending with the agent name
+    // e.g. "gt-mayor" → also matches "hq-mayor", "tw-mayor", etc.
+    try {
+      const agentName = sessionName.replace(/^[^-]+-/, ''); // strip prefix
+      const { stdout } = await execFileAsync('tmux', ['ls']);
+      return String(stdout || '').split('\n').some(line =>
+        line.match(new RegExp(`^[^:]*-${agentName}:`))
+      );
+    } catch {
+      return false;
+    }
   }
 }
 
@@ -247,28 +258,80 @@ function addMayorMessage(target, message, status, response = null) {
   return entry;
 }
 
-// Get running tmux sessions for polecats
+// Get running polecat agent paths using gt polecat list --all --json
 async function getRunningPolecats() {
   try {
-    const { stdout } = await execFileAsync('tmux', ['ls']);
-    const sessions = new Set();
-    // Parse tmux ls output: "gt-rig-polecat: 1 windows (created ...)"
-    for (const line of String(stdout || '').split('\n')) {
-      const match = line.match(/^(gt-[^:]+):/);
-      if (match) {
-        // Convert "gt-hytopia-map-compression-capable" to "hytopia-map-compression/capable"
-        const parts = match[1].replace('gt-', '').split('-');
-        if (parts.length >= 2) {
-          const name = parts.pop();
-          const rig = parts.join('-');
-          sessions.add(`${rig}/${name}`);
-        }
+    const { stdout } = await execFileAsync('gt', ['polecat', 'list', '--all', '--json'], {
+      cwd: GT_ROOT,
+      timeout: 10000,
+    });
+    const polecats = JSON.parse(String(stdout || '') || '[]');
+    const paths = new Set();
+    for (const pc of (Array.isArray(polecats) ? polecats : [])) {
+      if (pc.session_running && pc.rig && pc.name) {
+        paths.add(`${pc.rig}/${pc.name}`);
       }
     }
-    return sessions;
+    return paths;
   } catch {
     return new Set();
   }
+}
+
+// Find the actual tmux session name for a named service (mayor, deacon, witness, refinery).
+// Uses gt status --json as the authoritative source, falls back to tmux ls search.
+async function findAgentSession(name) {
+  try {
+    const { stdout } = await execFileAsync('gt', ['status', '--json', '--fast'], {
+      cwd: GT_ROOT,
+      timeout: 10000,
+    });
+    const data = JSON.parse(String(stdout || '') || '{}');
+    for (const agent of (data.agents || [])) {
+      if (agent.name === name && agent.session) return agent.session;
+    }
+    for (const rig of (data.rigs || [])) {
+      for (const agent of (rig.agents || [])) {
+        if (agent.name === name && agent.session) return agent.session;
+      }
+    }
+  } catch {}
+  // Fallback: find any tmux session ending with -<name>
+  try {
+    const { stdout } = await execFileAsync('tmux', ['ls']);
+    const line = String(stdout || '').split('\n').find(l => l.match(new RegExp(`^[^:]*-${name}:`)));
+    if (line) return line.split(':')[0].trim();
+  } catch {}
+  return null;
+}
+
+// Find the actual tmux session name for a polecat given its rig and name.
+// Derives the rig prefix from known service session names in gt status --json.
+async function findPolecatSession(rig, name) {
+  try {
+    const { stdout } = await execFileAsync('gt', ['status', '--json', '--fast'], {
+      cwd: GT_ROOT,
+      timeout: 10000,
+    });
+    const data = JSON.parse(String(stdout || '') || '{}');
+    for (const r of (data.rigs || [])) {
+      if (r.name !== rig) continue;
+      for (const agent of (r.agents || [])) {
+        if (agent.session) {
+          // tw-witness → prefix "tw" → polecat session "tw-<name>"
+          const m = agent.session.match(/^(.+)-[^-]+$/);
+          if (m) return `${m[1]}-${name}`;
+        }
+      }
+    }
+  } catch {}
+  // Fallback: find any session ending with -<name>
+  try {
+    const { stdout } = await execFileAsync('tmux', ['ls']);
+    const line = String(stdout || '').split('\n').find(l => l.match(new RegExp(`^[^:]*-${name}:`)));
+    if (line) return line.split(':')[0].trim();
+  } catch {}
+  return null;
 }
 
 // Parse GitHub URL to extract owner/repo
@@ -779,24 +842,41 @@ app.get('/api/agents', async (req, res) => {
     const data = parseJSON(result.data);
     const agents = data?.agents || [];
 
-    // Enhance agents with running state
+    // gt status --json already includes running field for each agent (mayor, deacon).
+    // Supplement with polecat running states from getRunningPolecats().
     for (const agent of agents) {
-      agent.running = runningPolecats.has(agent.address?.replace(/\/$/, ''));
+      if (agent.running === undefined) {
+        agent.running = runningPolecats.has(agent.address?.replace(/\/$/, ''));
+      }
     }
 
-    // Also include running polecats from rigs
+    // Build polecat list from rig agents + hooks
     const polecats = [];
     for (const rig of data?.rigs || []) {
-      for (const hook of rig.hooks || []) {
-        const isRunning = runningPolecats.has(hook.agent) ||
-          runningPolecats.has(hook.agent?.replace(/\//, '/polecats/'));
+      // Rig-level agents (witness, refinery) — running state from status JSON
+      for (const agent of rig.agents || []) {
         polecats.push({
-          name: hook.agent,
+          name: `${rig.name}/${agent.name}`,
+          rig: rig.name,
+          role: agent.role,
+          running: agent.running ?? false,
+          has_work: agent.has_work ?? false,
+          hook_bead: null,
+        });
+      }
+      // Active polecat hooks (work assignments)
+      for (const hook of rig.hooks || []) {
+        const agentPath = hook.agent;
+        // Skip if already added as rig agent
+        if (polecats.some(p => p.name === agentPath)) continue;
+        const isRunning = runningPolecats.has(agentPath);
+        polecats.push({
+          name: agentPath,
           rig: rig.name,
           role: hook.role,
           running: isRunning,
           has_work: hook.has_work,
-          hook_bead: hook.hook_bead
+          hook_bead: hook.hook_bead,
         });
       }
     }
@@ -812,23 +892,18 @@ app.get('/api/agents', async (req, res) => {
 // Get Mayor output (tmux buffer)
 app.get('/api/mayor/output', async (req, res) => {
   const lines = parseInt(req.query.lines) || 100;
-  const sessionName = 'gt-mayor';
 
   try {
-    const output = await getPolecatOutput(sessionName, lines);
-    const isRunning = await isSessionRunning(sessionName);
+    const sessionName = await findAgentSession('mayor');
+    const output = sessionName ? await getPolecatOutput(sessionName, lines) : null;
+    const isRunning = !!sessionName && output !== null;
 
-    if (output !== null) {
-      res.json({
-        session: sessionName,
-        output,
-        running: isRunning,
-        // Include recent messages sent to Mayor for context
-        recentMessages: mayorMessageHistory.slice(0, 10)
-      });
-    } else {
-      res.json({ session: sessionName, output: null, running: isRunning, recentMessages: [] });
-    }
+    res.json({
+      session: sessionName || 'hq-mayor',
+      output,
+      running: isRunning,
+      recentMessages: mayorMessageHistory.slice(0, 10),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -945,17 +1020,18 @@ app.post('/api/polecat/:rig/:name/stop', async (req, res) => {
   if (!agent) return;
   const rig = agent.rig.value;
   const name = agent.name.value;
-  const sessionName = agent.toSessionName();
 
   console.log(`[Agent] Stopping ${rig}/${name}...`);
 
   try {
-    // Kill the tmux session
+    const sessionName = await findPolecatSession(rig, name);
+    if (!sessionName) {
+      return res.json({ success: true, message: `${rig}/${name} was not running` });
+    }
     await execFileAsync('tmux', ['kill-session', '-t', sessionName]);
     broadcast({ type: 'agent_stopped', data: { rig, name, session: sessionName } });
     res.json({ success: true, message: `Stopped ${rig}/${name}` });
   } catch (err) {
-    // Session might not exist, which is fine
     const errText = `${err.stderr || ''} ${err.message || ''}`;
     if (errText.includes("can't find session")) {
       res.json({ success: true, message: `${rig}/${name} was not running` });
@@ -973,14 +1049,14 @@ app.post('/api/polecat/:rig/:name/restart', async (req, res) => {
   const rig = agent.rig.value;
   const name = agent.name.value;
   const agentPath = agent.toString();
-  const sessionName = agent.toSessionName();
 
   console.log(`[Agent] Restarting ${agentPath}...`);
 
   try {
     // First try to kill existing session (ignore errors)
     try {
-      await execFileAsync('tmux', ['kill-session', '-t', sessionName]);
+      const sessionName = await findPolecatSession(rig, name);
+      if (sessionName) await execFileAsync('tmux', ['kill-session', '-t', sessionName]);
     } catch {
       // Ignore - session might not exist
     }
@@ -1003,14 +1079,15 @@ app.post('/api/polecat/:rig/:name/restart', async (req, res) => {
   }
 });
 
-// Get hook status
+// Get hook status — only works inside an agent session context; return gracefully otherwise
 app.get('/api/hook', async (req, res) => {
   const result = await executeGT(['hook', 'status', '--json']);
   if (result.success) {
     const data = parseJSON(result.data);
     res.json(data || { hooked: null });
   } else {
-    res.status(500).json({ error: result.error });
+    // Running gt hook from outside an agent session is expected to fail
+    res.json({ hooked: null, reason: 'not_in_agent_context' });
   }
 });
 
@@ -1062,18 +1139,10 @@ app.get('/api/setup/status', async (req, res) => {
 
   // Get rigs
   try {
-    const rigResult = await executeGT(['rig', 'list']);
+    const rigResult = await executeGT(['rig', 'list', '--json']);
     if (rigResult.success) {
-      // Parse text output
-      const rigs = [];
-      const lines = rigResult.data.split('\n');
-      for (const line of lines) {
-        const match = line.match(/^  ([a-zA-Z0-9_-]+)$/);
-        if (match) {
-          rigs.push({ name: match[1] });
-        }
-      }
-      status.rigs = rigs;
+      const rigs = parseJSON(rigResult.data) || [];
+      status.rigs = rigs.map(r => ({ name: r.name, status: r.status }));
     }
   } catch {
     status.rigs = [];
@@ -1140,19 +1209,10 @@ app.get('/api/rigs', async (req, res) => {
     if (cached) return res.json(cached);
   }
 
-  const result = await executeGT(['rig', 'list']);
+  const result = await executeGT(['rig', 'list', '--json']);
 
   if (result.success) {
-    // Parse text output: "  rigname\n    Polecats: 0..."
-    const rigs = [];
-    const lines = result.data.split('\n');
-    for (const line of lines) {
-      // Rig names are indented with 2 spaces, not 4
-      const match = line.match(/^  ([a-zA-Z0-9_-]+)$/);
-      if (match) {
-        rigs.push({ name: match[1] });
-      }
-    }
+    const rigs = parseJSON(result.data) || [];
     setCache('rigs', rigs, CACHE_TTL.rigs);
     res.json(rigs);
   } else {
@@ -1190,27 +1250,21 @@ app.get('/api/crews', async (req, res) => {
     }
   }
 
-  const result = await executeGT(['crew', 'list', '--json']);
+  const result = await executeGT(['crew', 'list', '--all', '--json']);
 
   if (result.success) {
     const data = parseJSON(result.data);
-    if (data) {
+    if (Array.isArray(data)) {
       setCache('crews', data, CACHE_TTL.status);
       return res.json(data);
     }
-    // Parse non-JSON output
+    // Gracefully handle "No crew workspaces found." text response
     const crews = [];
-    const lines = result.data.split('\n').filter(Boolean);
-    for (const line of lines) {
-      const match = line.match(/^(\S+)\s+/);
-      if (match) {
-        crews.push({ name: match[1] });
-      }
-    }
     setCache('crews', crews, CACHE_TTL.status);
     res.json(crews);
   } else {
-    res.status(500).json({ error: result.error });
+    // crew list may fail if no rigs — return empty rather than 500
+    res.json([]);
   }
 });
 
@@ -1282,88 +1336,58 @@ app.get('/api/doctor', async (req, res) => {
     }
   }
 
-  // First try with --json flag (gt doctor can take 15-20s)
-  let result = await executeGT(['doctor', '--json'], { timeout: 25000 });
-
-  if (result.success) {
-    const data = parseJSON(result.data);
-    if (data) {
-      setCache('doctor', data, 30000); // 30s cache
-      return res.json(data);
+  // gt doctor exits with code 1 when it finds errors (normal), so we read stdout
+  // directly via execFileAsync rather than through executeGT which treats exit code 1 as failure.
+  let rawOutput = '';
+  try {
+    const { stdout } = await execFileAsync('gt', ['doctor'], {
+      cwd: GT_ROOT,
+      timeout: 60000,
+    });
+    rawOutput = String(stdout || '');
+  } catch (err) {
+    // exit code 1 with checks output is normal — use stdout from the error object
+    rawOutput = String(err.stdout || '');
+    if (!rawOutput) {
+      const response = { checks: [], raw: String(err.message || 'gt doctor failed'), error: err.message };
+      setCache('doctor', response, 10000);
+      return res.json(response);
     }
-    // If JSON parse failed, return raw output
-    const response = { raw: result.data, checks: [] };
-    setCache('doctor', response, 30000);
-    return res.json(response);
   }
 
-  // Fallback: try without --json flag (gt doctor can take 15-20s)
-  result = await executeGT(['doctor'], { timeout: 25000 });
-
-  if (result.success) {
-    // Parse text output into structured format with details
-    const lines = result.data.split('\n');
-    const checks = [];
-    let currentCheck = null;
-
-    for (const line of lines) {
-      // Parse status lines: "✓ check-name: description" or "✗ check-name: description"
-      const checkMatch = line.match(/^([✓✔✗✘×⚠!])\s*([^:]+):\s*(.+)$/);
-
-      if (checkMatch) {
-        // Save previous check
-        if (currentCheck) checks.push(currentCheck);
-
-        const [, symbol, checkName, description] = checkMatch;
-        const status = '✓✔'.includes(symbol) ? 'pass' : '✗✘×'.includes(symbol) ? 'fail' : 'warn';
-
-        currentCheck = {
-          id: checkName.trim(),
-          name: checkName.trim(),
-          description: description.trim(),
-          status,
-          details: [],
-          fix: null
-        };
-      } else if (currentCheck) {
-        // Capture detail lines (indented)
-        const detailMatch = line.match(/^\s{4}(.+)$/);
-        if (detailMatch) {
-          const detail = detailMatch[1].trim();
-          // Check if it's a fix command
-          if (detail.startsWith('→')) {
-            currentCheck.fix = detail.substring(1).trim();
-          } else {
-            currentCheck.details.push(detail);
-          }
-        }
-      }
+  // Parse gt doctor text output.
+  // Actual format: "  ○  check-name...\r  ✓  check-name description"
+  // The \r is from spinner animation — each line contains progress then overwrites with result.
+  const checks = [];
+  for (const line of rawOutput.split('\n')) {
+    const checkMatch = line.match(/^\s*[○●]\s+\S+\s+([✓✔✗✘×⚠✖!])\s+(\S+)\s+(.+)$/u);
+    if (checkMatch) {
+      const [, symbol, checkName, description] = checkMatch;
+      const passSyms = '✓✔';
+      const warnSyms = '⚠!';
+      const status = passSyms.includes(symbol) ? 'pass' : warnSyms.includes(symbol) ? 'warn' : 'fail';
+      // description may contain \r leftovers — strip them
+      checks.push({
+        id: checkName.trim(),
+        name: checkName.trim(),
+        description: description.replace(/\r/g, '').trim(),
+        status,
+        details: [],
+        fix: null,
+      });
     }
-
-    // Don't forget last check
-    if (currentCheck) checks.push(currentCheck);
-
-    // Parse summary line
-    const summaryMatch = result.data.match(/(\d+)\s*checks?,\s*(\d+)\s*passed?,\s*(\d+)\s*warnings?,\s*(\d+)\s*errors?/);
-    const summary = summaryMatch ? {
-      total: parseInt(summaryMatch[1]),
-      passed: parseInt(summaryMatch[2]),
-      warnings: parseInt(summaryMatch[3]),
-      errors: parseInt(summaryMatch[4])
-    } : null;
-
-    const response = { checks, summary, raw: result.data };
-    setCache('doctor', response, 30000);
-    return res.json(response);
   }
 
-  // Both failed - return error but with 200 to avoid breaking the UI
-  const response = {
-    checks: [],
-    raw: result.error || 'gt doctor command not available',
-    error: result.error
-  };
-  setCache('doctor', response, 10000); // Short cache for errors
+  // Parse summary line: "✓ 66 passed  ⚠ 5 warnings  ✖ 1 failed"
+  const summaryMatch = rawOutput.match(/(\d+)\s+passed.*?(\d+)\s+warnings?.*?(\d+)\s+failed/);
+  const summary = summaryMatch
+    ? { total: checks.length, passed: parseInt(summaryMatch[1]), warnings: parseInt(summaryMatch[2]), errors: parseInt(summaryMatch[3]) }
+    : checks.length > 0
+      ? { total: checks.length, passed: checks.filter(c => c.status === 'pass').length, warnings: checks.filter(c => c.status === 'warn').length, errors: checks.filter(c => c.status === 'fail').length }
+      : null;
+
+  const response = { checks, summary, raw: rawOutput };
+  setCache('doctor', response, 30000);
   res.json(response);
 });
 
@@ -1445,15 +1469,16 @@ app.post('/api/service/:name/down', async (req, res) => {
       broadcast({ type: 'service_stopped', data: { service: name } });
       res.json({ success: true, service: name, message: `${name} stopped`, raw: result.data });
     } else {
-      // Try killing tmux session directly
-      const sessionName = `gt-${name}`;
+      // Try killing tmux session directly using actual session name
       try {
-        await execFileAsync('tmux', ['kill-session', '-t', sessionName]);
-        broadcast({ type: 'service_stopped', data: { service: name } });
-        res.json({ success: true, service: name, message: `${name} stopped via tmux` });
-      } catch {
-        res.status(500).json({ success: false, error: result.error });
-      }
+        const sessionName = await findAgentSession(name);
+        if (sessionName) {
+          await execFileAsync('tmux', ['kill-session', '-t', sessionName]);
+          broadcast({ type: 'service_stopped', data: { service: name } });
+          return res.json({ success: true, service: name, message: `${name} stopped via tmux` });
+        }
+      } catch {}
+      res.status(500).json({ success: false, error: result.error });
     }
   } catch (err) {
     console.error(`[Service] Failed to stop ${name}:`, err);
@@ -1513,19 +1538,9 @@ app.get('/api/service/:name/status', async (req, res) => {
   const { name } = req.params;
 
   try {
-    const runningPolecats = await getRunningPolecats();
-    const sessionName = `gt-${name}`;
-
-    // Check if service has a tmux session
-    let running = false;
-    try {
-      const { stdout } = await execFileAsync('tmux', ['ls']);
-      running = String(stdout || '').includes(sessionName);
-    } catch {
-      running = false;
-    }
-
-    res.json({ service: name, running, session: running ? sessionName : null });
+    const sessionName = await findAgentSession(name);
+    const running = !!sessionName;
+    res.json({ service: name, running, session: sessionName || null });
   } catch (err) {
     res.json({ service: name, running: false, error: err.message });
   }

@@ -1,47 +1,38 @@
 # Gastown GUI ↔ CLI Compatibility Report
 
-Audit date: 2026-02-12
+Audit date: 2026-02-22 (updated after refactoring)
 Upstream CLI: [steveyegge/gastown](https://github.com/steveyegge/gastown) + [steveyegge/beads](https://github.com/steveyegge/beads)
 
 ## Summary
 
-The GUI was built against an older version of `gt`/`bd`. The CLI has since renamed and restructured several commands. **28 of 41 commands work, 7 are broken, 3 have wrong flags, 3 are partially matched.**
+All previously broken commands have been fixed. GUI now uses correct CLI commands and session naming for the current gastown version.
 
-## Broken Commands (don't exist in current CLI)
+## Fixed Issues (2026-02-22 refactoring)
 
-| GUI calls | Real CLI equivalent | Affected file |
-|---|---|---|
-| `gt polecat spawn <rig/name>` | No standalone spawn — handled internally by `gt sling` | `server.js` |
-| `gt <service> down` | `gt mayor stop`, `gt witness stop <rig>`, `gt refinery stop [rig]`, `gt deacon stop` | `server.js` |
-| `gt formula use <name> --target X --args X` | `gt formula run [name] --rig X --pr X --dry-run` | `server/services/FormulaService.js` |
-| `bd done <id> -m <summary>` | `bd close <id> -r <reason>` | `server/gateways/BDGateway.js` |
-| `bd park <id> -m <reason>` | `bd defer <id>` | `server/gateways/BDGateway.js` |
-| `bd release <id>` | `bd update <id> --status open` | `server/gateways/BDGateway.js` |
-| `bd reassign <id> <target>` | `bd update <id> --assignee <target>` | `server/gateways/BDGateway.js` |
+| Issue | Fix applied |
+|---|---|
+| Session names used `gt-mayor` prefix | Now uses `findAgentSession()` that reads actual session from `gt status --json` |
+| `bd --no-daemon` flag not recognized | Removed from `BDGateway.js` |
+| `gt rig list` text parsing broken by emoji | Now uses `gt rig list --json` |
+| `gt crew list` failed without rig context | Now uses `--all` flag |
+| `gt hook status` failed outside agent context | Returns graceful `{ hooked: null, reason: 'not_in_agent_context' }` |
+| Doctor output parser wrong format | Fixed to match actual `○/✓/⚠/✖` spinner format with `\r` |
+| Running polecat detection used `gt-` prefix | Now uses `gt polecat list --all --json` |
+| `StatusService` used tmux `gt-` prefix parsing | Now uses `gt status --json` `running` field + polecat list |
 
-## Wrong Flags / Missing Arguments
+## Working Commands (current)
 
-| GUI calls | Issue | Affected file |
-|---|---|---|
-| `gt escalate ... -m <msg>` | Flag should be `-r`/`--reason`, not `-m` | `server/gateways/GTGateway.js` |
-| `gt witness start` (no rig) | Requires `<rig>` argument | `server.js` |
-| `gt refinery start` (no rig) | Requires `[rig]` argument | `server.js` |
+`gt status --json`, `gt convoy list/status/create --json`, `gt sling`, `gt mail inbox/send/read/mark-read/mark-unread --json`, `gt nudge`, `gt mayor start/stop/restart`, `gt deacon start/stop/restart`, `gt witness start <rig>/stop <rig>/restart <rig>`, `gt refinery start [rig]/stop [rig]/restart [rig]`, `gt rig list --json/add/remove`, `gt crew list --all --json/add/remove`, `gt doctor`, `gt doctor --fix`, `gt feed --plain --follow`, `gt formula list/show/run/create`, `gt polecat list --all --json`, `bd list/search/new/show/close/defer/update --json`.
 
-## Partial Matches
+## Remaining Partial Matches
 
 | GUI calls | Issue |
 |---|---|
-| `gt formula create --description --template` | Real CLI may use `--type` instead |
-| `bd create --role-type` | Flag not confirmed in current CLI |
-| `bd --no-daemon` | Flag not confirmed; may be silently ignored |
+| `gt formula create --description --template` | Real CLI may use different flags — create works but template syntax unverified |
+| `gt hook status` | Only works inside agent session; server always returns graceful fallback |
 
-## Working Commands (28)
+## Notes
 
-`gt status`, `gt convoy list/status/create`, `gt sling`, `gt mail inbox/send/read/mark-read/mark-unread`, `gt nudge`, `gt mayor start`, `gt rig list/add/remove`, `gt crew list/status/add/remove`, `gt doctor`, `gt doctor --fix`, `gt hook status`, `gt feed`, `gt version`, `gt formula list/show`, `bd list`, `bd search`, `bd new`, `bd show`, `bd version`, `bd formula list`.
-
-## Graceful Fallbacks
-
-| Command | Behavior |
-|---|---|
-| `gt doctor --json` | `--json` flag doesn't exist; GUI falls back to plain text parsing |
-| `gt rig list` | No `--json` flag; GUI parses text output |
+- `gt feed --json` does not exist; GUI uses `gt feed --plain --follow` for WebSocket stream
+- `gt doctor` exits with code 1 when issues found (normal); server reads stdout directly via `execFileAsync`
+- Session naming format: `hq-mayor`, `hq-deacon`, `tw-witness`, `tw-refinery`, `vo-witness`, `vo-refinery`, `tw-<polecat>` — derived from workspace prefix, not `gt-` prefix
