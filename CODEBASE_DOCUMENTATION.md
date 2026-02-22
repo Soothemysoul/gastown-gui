@@ -279,14 +279,17 @@ frontend/src/components/modals/
 └─ EscalationModal.vue - Escalation form (convoy ID, reason, priority), ported from modals.js
 
 frontend/src/components/views/
-├─ DashboardView.vue - Town status overview (/)
-├─ AgentsView.vue - Agent grid and status (/agents)
-├─ ConvoysView.vue - Convoy management (/convoys)
+├─ DashboardView.vue - Town status overview: metrics cards, health banner, quick actions, agent stats, recent work, rig overview (/)
+├─ AgentsView.vue - Agent grid with role filter, uses AgentCard (/agents)
+├─ AgentCard.vue - Individual agent card: status, start/stop/peek/nudge actions, progress
+├─ ConvoysView.vue - Convoy list with active/all filter, uses ConvoyCard (/convoys)
+├─ ConvoyCard.vue - Expandable convoy card: issue tree, worker panel, progress bars, escalate/sling actions
+├─ WorkView.vue - Work list with all/open/closed filter, uses WorkItem (/work)
+├─ WorkItem.vue - Bead card: priority coloring, status, done/park/release/reassign actions
 ├─ MailView.vue - Inbox, compose, reply (/mail)
 ├─ IssuesView.vue - Beads issue tracker (/issues)
 ├─ PrsView.vue - GitHub PR list (/prs)
 ├─ FormulasView.vue - Formula editor/executor (/formulas)
-├─ WorkView.vue - Active work items (/work)
 ├─ RigsView.vue - Rig management + polecat control (/rigs)
 ├─ CrewsView.vue - Crew management (/crews)
 └─ HealthView.vue - System health check (/health)
