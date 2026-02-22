@@ -276,7 +276,12 @@ frontend/src/components/modals/
 ├─ NewRigModal.vue - Add rig dialog (GitHub/GitLab repo picker with search/filter, local path support)
 ├─ PeekModal.vue - Agent output viewer (auto-refresh via usePolling at 2s, transcript tab)
 ├─ NewFormulaModal.vue - Formula create/edit form (name, description, template)
-└─ NewCrewModal.vue - Crew create form (name, rig selection)
+├─ NewCrewModal.vue - Crew create form (name, rig selection)
+├─ ConvoyDetailModal.vue - Async-loading convoy detail (ID, status, issue tree)
+├─ AgentDetailModal.vue - Agent info card (ID display, placeholder)
+├─ NudgeModal.vue - Nudge agent form (target + message, submit)
+├─ MailDetailModal.vue - Read-only mail display (meta, body, mark read, reply)
+└─ BeadDetailModal.vue - Rich bead detail (meta, description, close reason, labels, PR links, sling action)
 
 frontend/src/components/views/
 ├─ DashboardView.vue - Town status overview: metrics cards, health banner, quick actions, agent stats, recent work, rig overview (/)
