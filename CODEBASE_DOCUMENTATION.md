@@ -291,13 +291,19 @@ frontend/src/components/views/
 ├─ ConvoyCard.vue - Expandable convoy card: issue tree, worker panel, progress bars, escalate/sling actions
 ├─ WorkView.vue - Work list with all/open/closed filter, uses WorkItem (/work)
 ├─ WorkItem.vue - Bead card: priority coloring, status, done/park/release/reassign actions
-├─ MailView.vue - Inbox, compose, reply (/mail)
-├─ IssuesView.vue - Beads issue tracker (/issues)
-├─ PrsView.vue - GitHub PR list (/prs)
-├─ FormulasView.vue - Formula editor/executor (/formulas)
-├─ RigsView.vue - Rig management + polecat control (/rigs)
-├─ CrewsView.vue - Crew management (/crews)
-└─ HealthView.vue - System health check (/health)
+├─ MailView.vue - Inbox with my/all filter, compose button, uses MailItem (/mail)
+├─ MailItem.vue - Mail row: from/to agent badges, subject, read/unread toggle, time
+├─ IssuesView.vue - GitHub issues with open/closed/all filter, uses IssueItem (/issues)
+├─ IssueItem.vue - Issue card: state icon, labels, author, assignees, sling action
+├─ PrsView.vue - GitHub PRs with open/merged/closed/all filter, uses PrItem (/prs)
+├─ PrItem.vue - PR card: state icon, branch, author, review status, open-in-GitHub
+├─ FormulasView.vue - Formula list with view/edit/use/delete, uses FormulaItem (/formulas)
+├─ FormulaItem.vue - Formula card: name, description, template preview, CRUD actions
+├─ RigsView.vue - Rig list with agent controls, park/boot/remove, uses RigCard (/rigs)
+├─ RigCard.vue - Rig card: agent list with start/stop/restart/peek, stats, GitHub link
+├─ CrewsView.vue - Crew grid with status/remove, uses CrewCard (/crews)
+├─ CrewCard.vue - Crew card: members, status, rig assignment, stats
+└─ HealthView.vue - Doctor diagnostics: summary banner, filter by status, fix actions (/health)
 ```
 
 ## Key Patterns
