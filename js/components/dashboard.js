@@ -8,6 +8,7 @@
 import { api } from '../api.js';
 import { state } from '../state.js';
 import { showToast } from './toast.js';
+import { openModal } from './modals.js';
 import { AGENT_TYPES, STATUS_COLORS, getAgentConfig } from '../shared/agent-types.js';
 import { BEAD_DETAIL, STATUS_UPDATED } from '../shared/events.js';
 import { escapeHtml } from '../utils/html.js';
@@ -561,6 +562,14 @@ function setupQuickActionHandlers() {
     card.addEventListener('click', () => {
       const viewId = card.dataset.navigate;
       document.querySelector(`[data-view="${viewId}"]`)?.click();
+    });
+  });
+
+  // Modal open buttons (rendered dynamically — static initModals() listeners don't apply here)
+  container.querySelectorAll('[data-modal-open]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const modalId = btn.dataset.modalOpen;
+      openModal(modalId);
     });
   });
 
