@@ -14,11 +14,15 @@
     <div id="modal-target"></div>
 
     <ToastContainer />
+
+    <!-- Onboarding & Tutorial overlays -->
+    <OnboardingWizard ref="onboardingWizard" @complete="onOnboardingComplete" />
+    <TutorialOverlay ref="tutorialOverlay" />
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useStatusStore } from './stores/statusStore'
 import { useWebSocket } from './composables/useWebSocket'
 import { useKeyboardShortcuts } from './composables/useKeyboardShortcuts'
@@ -29,10 +33,15 @@ import AppSidebar from './components/layout/AppSidebar.vue'
 import ActivityFeed from './components/layout/ActivityFeed.vue'
 import StatusBar from './components/layout/StatusBar.vue'
 import ToastContainer from './components/shared/ToastContainer.vue'
+import OnboardingWizard from './components/shared/OnboardingWizard.vue'
+import TutorialOverlay from './components/shared/TutorialOverlay.vue'
 
 const statusStore = useStatusStore()
 const eventStore = useEventStore()
 const mailStore = useMailStore()
+
+const onboardingWizard = ref(null)
+const tutorialOverlay = ref(null)
 
 // WebSocket singleton — connects on mount via ref-counting
 useWebSocket()
@@ -46,6 +55,15 @@ function handleRefresh() {
   mailStore.fetchMail()
 }
 
+function onOnboardingComplete() {
+  // After onboarding, offer the tutorial
+  if (tutorialOverlay.value?.shouldShow()) {
+    tutorialOverlay.value.show()
+  }
+  // Refresh data after onboarding actions
+  statusStore.fetchStatus(true)
+}
+
 onMounted(async () => {
   window.addEventListener('gastown:refresh', handleRefresh)
 
@@ -53,6 +71,17 @@ onMounted(async () => {
   await statusStore.fetchStatus()
   mailStore.fetchMail()
   eventStore.loadMayorHistory()
+
+  // Check if onboarding should auto-start
+  if (onboardingWizard.value) {
+    const shouldOnboard = await onboardingWizard.value.shouldShow()
+    if (shouldOnboard) {
+      onboardingWizard.value.show()
+    } else if (tutorialOverlay.value?.shouldShow()) {
+      // If onboarding done but tutorial not yet shown, show tutorial
+      tutorialOverlay.value.show()
+    }
+  }
 })
 </script>
 

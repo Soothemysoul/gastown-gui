@@ -258,7 +258,9 @@ frontend/src/components/shared/
 ├─ EmptyState.vue - Icon + message + slot for actions
 ├─ ErrorState.vue - Error icon + message + retry button
 ├─ FilterGroup.vue - Toggle button group (v-model:modelValue)
-└─ ToastContainer.vue - Teleported toast notifications (uses useToast)
+├─ ToastContainer.vue - Teleported toast notifications (uses useToast)
+├─ OnboardingWizard.vue - First-run setup wizard (ported from js/components/onboarding.js)
+└─ TutorialOverlay.vue - Interactive tutorial with spotlight highlights (ported from js/components/tutorial.js)
 
 frontend/src/components/views/
 ├─ DashboardView.vue - Town status overview (/)
