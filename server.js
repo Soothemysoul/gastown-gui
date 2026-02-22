@@ -541,8 +541,9 @@ app.get('/api/mail', async (req, res) => {
 // Send mail
 app.post('/api/mail', async (req, res) => {
   const { to, subject, message, priority } = req.body;
+  const priorityMap = { urgent: '0', high: '1', normal: '2', low: '3', backlog: '4' };
   const args = ['mail', 'send', to, '-s', subject, '-m', message];
-  if (priority) args.push('--priority', priority);
+  if (priority) args.push('--priority', priorityMap[priority] || String(priority));
 
   const result = await executeGT(args);
   if (result.success) {
