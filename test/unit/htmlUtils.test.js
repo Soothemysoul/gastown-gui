@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { escapeAttr, escapeHtml, truncate, capitalize } from '../../js/utils/html.js';
+import { escapeAttr, escapeHtml, truncate, capitalize } from '../../legacy/js/utils/html.js';
 
 describe('html utils', () => {
   it('escapeHtml escapes HTML special characters', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { MAX_STAGGER_INDEX, getStaggerClass, getStaggerIndex } from '../../js/shared/animations.js';
+import { MAX_STAGGER_INDEX, getStaggerClass, getStaggerIndex } from '../../legacy/js/shared/animations.js';
 
 describe('animations shared', () => {
   it('caps stagger index to MAX_STAGGER_INDEX', () => {

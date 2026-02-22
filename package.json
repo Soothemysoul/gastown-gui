@@ -63,11 +63,10 @@
   },
   "files": [
     "bin/",
-    "css/",
-    "js/",
+    "dist/",
+    "legacy/",
     "server/",
     "assets/",
-    "index.html",
     "server.js",
     "start.sh",
     "README.md"

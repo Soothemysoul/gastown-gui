@@ -7,14 +7,13 @@
 ```
 ENTRY:    server.js - Express bridge server (gt/bd CLI → HTTP/WS)
 CLI:      bin/cli.js - npx gastown-gui entry point
-FRONTEND: js/ - Browser SPA (vanilla JS, no framework)
+FRONTEND: frontend/ - Vue 3 + Vite SPA (primary frontend)
 BACKEND:  server/ - Refactored backend modules (services, gateways, routes)
-STYLES:   css/ - CSS custom properties + component styles
 TESTS:    test/ - Vitest unit + integration, Puppeteer E2E
 CONFIG:   vitest.config.js, vitest.unit.config.js, package.json
 ASSETS:   assets/ - Favicons + screenshots
 DOCS:     refactoring-analysis/ - Refactor plans/reports, CLI-COMPATIBILITY.md
-VUE:      frontend/ - Vue 3 + Vite SPA (new frontend, replacing vanilla JS)
+LEGACY:   legacy/ - Archived vanilla JS frontend (js/, css/, index.html)
 ```
 
 ## Backend — Entry & App
@@ -90,62 +89,20 @@ server/routes/github.js - GET /api/github/{prs,issues,repos}
 server/routes/targets.js - GET /api/targets
 ```
 
-## Frontend — Core
+## Legacy Frontend (Archived) — `legacy/`
+
+The original vanilla JS frontend has been moved to `legacy/`. It is served as a
+fallback when no Vue production build (`dist/`) exists.
 
 ```
-js/app.js - App init, tab routing, event wiring, status polling
-js/api.js - HTTP client for /api/* + WebSocket client class
-js/state.js - Global reactive state store, component subscriptions
-```
-
-## Frontend — Components
-
-```
-js/components/dashboard.js - Main dashboard layout + tab switching
-js/components/sidebar.js - Agent tree, service controls, stats, hook display
-js/components/agent-grid.js - Agent cards with status/actions
-js/components/convoy-list.js - Convoy management panel
-js/components/mail-list.js - Mail inbox/compose/reply
-js/components/issue-list.js - Beads/issues list with search
-js/components/pr-list.js - GitHub PR list
-js/components/formula-list.js - Formula editor/executor
-js/components/work-list.js - Active work items display
-js/components/rig-list.js - Rig management + polecat spawn/stop
-js/components/crew-list.js - Crew CRUD operations
-js/components/health-check.js - System health display (doctor)
-js/components/activity-feed.js - Real-time event stream
-js/components/modals.js - Modal dialogs (sling, nudge, compose)
-js/components/onboarding.js - First-run setup wizard
-js/components/tutorial.js - Interactive tutorial overlay
-js/components/autocomplete.js - Search input with suggestions
-js/components/toast.js - Toast notification system
-```
-
-## Frontend — Shared & Utils
-
-```
-js/shared/agent-types.js - Agent type definitions, icons, colors
-js/shared/animations.js - Shared animation helpers
-js/shared/beads.js - Bead domain helpers/constants
-js/shared/close-reason.js - close_reason formatting
-js/shared/events.js - Custom event names/bus
-js/shared/github-repos.js - Bead/rig → GitHub repo mapping
-js/shared/timing.js - Shared timing constants (polling, debounce)
-
-js/utils/formatting.js - Date/number formatters
-js/utils/html.js - escapeHtml, escapeAttr, truncate, capitalize
-js/utils/performance.js - Debounce/throttle utilities
-js/utils/tooltip.js - Tooltip positioning helpers
-```
-
-## Styles
-
-```
-css/variables.css - CSS custom properties (colors, spacing, z-index)
-css/reset.css - Browser reset
-css/layout.css - Grid/flex layouts, responsive breakpoints
-css/components.css - Component-specific styles
-css/animations.css - Transitions & keyframes
+legacy/index.html - Original HTML entry point
+legacy/js/app.js - App init, tab routing, event wiring, status polling
+legacy/js/api.js - HTTP client for /api/* + WebSocket client class
+legacy/js/state.js - Global reactive state store, component subscriptions
+legacy/js/components/ - UI components (dashboard, sidebar, agents, etc.)
+legacy/js/shared/ - Agent types, animations, beads, events, timing
+legacy/js/utils/ - Formatting, HTML, performance, tooltip helpers
+legacy/css/ - CSS custom properties, reset, layout, components, animations
 ```
 
 ## Tests
@@ -194,7 +151,7 @@ refactoring-analysis/ - Refactor plans, reports, and analysis docs
 refactoring-analysis/trace/ - Sanitized prompt/trace exports
 ```
 
-## Frontend (Vue 3 + Vite) — `frontend/`
+## Frontend (Vue 3 + Vite) — `frontend/` (Primary)
 
 ```
 frontend/package.json - Vue 3, vue-router, pinia, vite, @vitejs/plugin-vue
@@ -321,5 +278,5 @@ frontend/src/composables/__tests__/ - Composable unit tests
 - **Gateway pattern:** CLI tools (gt, bd, gh, git, tmux) wrapped in gateway classes; services compose gateways; routes call services
 - **Safe execution:** All CLI calls use `execFile` (no shell) + `SafeSegment` validation — prevents injection
 - **Cache + invalidation:** `CacheRegistry` with TTL; `EventBus` triggers cache clears on mutations
-- **Frontend:** Vanilla JS SPA, no build step. Components render via innerHTML, subscribe to global state
+- **Frontend:** Vue 3 SPA in `frontend/`, built with Vite, state in Pinia stores, routes via Vue Router
 - **Service controls:** Witness/refinery require a `rig` parameter for start/stop/restart; mayor/deacon do not

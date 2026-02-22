@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_BEAD_PRIORITY, getBeadPriority } from '../../js/shared/beads.js';
+import { DEFAULT_BEAD_PRIORITY, getBeadPriority } from '../../legacy/js/shared/beads.js';
 
 describe('beads shared', () => {
   it('defaults missing/invalid priorities', () => {

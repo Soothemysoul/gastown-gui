@@ -5,7 +5,7 @@ import {
   formatActivityFeedTime,
   formatTimeAgoCompact,
   formatTimeAgoOrDate,
-} from '../../js/utils/formatting.js';
+} from '../../legacy/js/utils/formatting.js';
 
 describe('formatting time helpers', () => {
   beforeEach(() => {

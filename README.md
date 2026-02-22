@@ -12,7 +12,7 @@ A standalone web GUI for [Gas Town](https://github.com/steveyegge/gastown) - the
 >
 > — **Steve Yegge**, creator of Gas Town ([PR #212 comment](https://github.com/steveyegge/gastown/pull/212))
 
-**Status:** 🚧 **Candidate for Testing** - Provides a solid starting point for a Gas Town GUI interface.
+**Status:** Active development - Vue 3 frontend with Express backend.
 
 ---
 
@@ -54,6 +54,102 @@ Opens `http://localhost:7667` in your browser.
 
 ```bash
 gastown-gui doctor
+```
+
+---
+
+## Architecture
+
+```
+gastown-gui/
+├── frontend/           # Vue 3 + Vite SPA (primary frontend)
+│   ├── src/
+│   │   ├── components/ # Vue components (layout, views, shared, modals)
+│   │   ├── stores/     # Pinia state management
+│   │   ├── composables/# Reusable composition functions
+│   │   ├── constants/  # Shared constants & helpers
+│   │   ├── utils/      # Formatting, HTML, performance utils
+│   │   └── router/     # Vue Router with lazy-loaded routes
+│   └── vite.config.js  # Vite build config (outputs to ../dist/)
+├── server.js           # Express + WebSocket server (gt/bd CLI bridge)
+├── server/             # Refactored backend modules
+│   ├── gateways/       # CLI wrappers (gt, bd, gh, git, tmux)
+│   ├── services/       # Business logic layer
+│   ├── routes/         # Express route handlers
+│   ├── infrastructure/ # CommandRunner, CacheRegistry, EventBus
+│   ├── domain/values/  # SafeSegment, AgentPath validation
+│   └── app/            # Express app factory
+├── legacy/             # Archived vanilla JS frontend
+│   ├── js/             # Original vanilla JS components
+│   ├── css/            # Original stylesheets
+│   └── index.html      # Original HTML entry point
+├── test/               # Vitest + Puppeteer tests
+└── bin/cli.js          # CLI entry point
+```
+
+### Tech Stack
+
+- **Backend:** Node.js + Express + WebSocket
+- **Frontend:** Vue 3 + Vite + Pinia + Vue Router
+- **Communication:** WebSocket for real-time updates, REST for CRUD
+- **Testing:** Vitest (unit/integration) + Puppeteer (E2E)
+
+### Design Principles
+
+1. **Server-Authoritative** - All operations execute via `gt` and `bd` CLI commands
+2. **Non-Blocking UI** - Modals close immediately, operations run in background
+3. **Real-Time Updates** - WebSocket broadcasts status changes to all clients
+4. **Graceful Degradation** - UI handles missing data and command failures
+5. **Cache & Refresh** - Background data preloading with stale-while-revalidate
+
+---
+
+## Development
+
+### Backend (Express Server)
+
+```bash
+npm start              # Start server (port 7667)
+npm run dev            # Dev mode with auto-reload
+```
+
+### Frontend (Vue 3 + Vite)
+
+```bash
+# Start Vue dev server with hot reload (proxies API to Express)
+npm run dev:frontend
+
+# Build Vue app for production (outputs to dist/)
+npm run build:frontend
+
+# Run frontend tests
+npm run test:frontend
+```
+
+See [`frontend/README.md`](frontend/README.md) for detailed Vue development guide.
+
+### Full Development Workflow
+
+1. Start the Express backend: `npm run dev`
+2. In another terminal, start the Vue dev server: `npm run dev:frontend`
+3. Open `http://localhost:5173` (Vite dev server with hot reload)
+
+For production, build the frontend and serve via Express:
+```bash
+npm run build:frontend   # Build Vue app → dist/
+npm start                # Express serves dist/ automatically
+```
+
+---
+
+## Testing
+
+```bash
+npm test               # All backend tests (unit + integration + E2E)
+npm run test:unit      # Backend unit tests only
+npm run test:e2e       # E2E tests (needs Puppeteer)
+npm run test:watch     # Watch mode
+npm run test:frontend  # Vue frontend tests
 ```
 
 ---
@@ -114,52 +210,6 @@ gastown-gui help
 
 ---
 
-## How It Works
-
-The GUI acts as a **bridge** between your browser and the Gas Town CLI:
-
-```
-┌─────────────┐
-│   Browser   │
-│   (Client)  │
-└──────┬──────┘
-       │ HTTP API / WebSocket
-       ↓
-┌─────────────┐
-│  gastown-   │
-│  gui server │
-└──────┬──────┘
-       │ subprocess (gt, bd, gh)
-       ↓
-┌─────────────┐
-│   ~/gt/     │
-│  workspace  │
-└─────────────┘
-```
-
-All operations execute through the official `gt` and `bd` commands - the GUI never directly modifies Gas Town's internal state.
-
----
-
-## Architecture
-
-### Tech Stack
-
-- **Backend:** Node.js + Express
-- **Frontend:** Vanilla JavaScript (no framework)
-- **Communication:** WebSocket for real-time updates
-- **Testing:** Vitest + Puppeteer E2E tests
-
-### Design Principles
-
-1. **Server-Authoritative** - All operations execute via `gt` and `bd` CLI commands
-2. **Non-Blocking UI** - Modals close immediately, operations run in background
-3. **Real-Time Updates** - WebSocket broadcasts status changes to all clients
-4. **Graceful Degradation** - UI handles missing data and command failures
-5. **Cache & Refresh** - Background data preloading with stale-while-revalidate
-
----
-
 ## API Endpoints
 
 | Method | Endpoint | Description | CLI Command |
@@ -173,79 +223,6 @@ All operations execute through the official `gt` and `bd` commands - the GUI nev
 | GET | `/api/prs` | GitHub PRs | `gh pr list` |
 | GET | `/api/mail` | Mail inbox | `gt mail inbox` |
 | GET | `/api/doctor` | Health check | `gt doctor` |
-
----
-
-## Project Structure
-
-```
-gastown-gui/
-├── bin/cli.js           # CLI entry point
-├── server.js            # Express + WebSocket server
-├── index.html           # Main HTML (single page)
-├── css/                 # Stylesheets
-│   ├── variables.css
-│   ├── reset.css
-│   ├── layout.css
-│   ├── components.css
-│   └── animations.css
-├── js/
-│   ├── app.js           # Main app entry
-│   ├── api.js           # API client
-│   ├── state.js         # State management
-│   └── components/      # UI components
-│       ├── dashboard.js
-│       ├── rig-list.js
-│       ├── work-list.js
-│       ├── pr-list.js
-│       ├── mail-list.js
-│       └── ...
-├── test/
-│   ├── unit/            # Unit tests
-│   └── e2e.test.js      # E2E tests
-└── assets/              # Favicons, icons
-```
-
----
-
-## Testing
-
-```bash
-# All tests
-npm test
-
-# Unit tests only
-npm run test:unit
-
-# E2E tests
-npm run test:e2e
-
-# Watch mode
-npm run test:watch
-```
-
----
-
-## Known Limitations
-
-### Remaining Features (Use CLI)
-
-| Feature | Status |
-|---------|--------|
-| Agent configuration UI | ❌ Not implemented |
-
-### Implemented Features
-
-| Feature | Status |
-|---------|--------|
-| Polecat spawn/stop/restart | ✅ UI in Rig list |
-| Rig deletion | ✅ Remove button in Rig list |
-| Crew management | ✅ Create/list/view |
-| Formula operations | ✅ Create/list/use |
-| Test coverage | ✅ 206 tests passing |
-
-**Known Issues:**
-- GT CLI sling may fail with "mol bond requires direct database access" (upstream issue)
 
 ---
 
@@ -268,7 +245,7 @@ Contributions welcome!
 3. Make your changes
 4. **Update `CLAUDE.md`** if you add, rename, or delete files
 5. Test locally (start server with `npm start`, verify in browser)
-6. Run automated tests: `npm test` (206 tests must pass)
+6. Run automated tests: `npm test`
 7. Submit a pull request
 
 ### Looking for Maintainers

@@ -163,21 +163,23 @@ setInterval(() => {
   }
 }, CACHE_CLEANUP_INTERVAL);
 
-// Middleware — serve Vue production build from dist/ if it exists, else vanilla JS
+// Middleware — serve Vue production build from dist/ if it exists, else legacy vanilla JS
 const distDir = path.join(__dirname, 'dist');
 if (fs.existsSync(distDir)) {
   app.use(express.static(distDir));
   app.get(/^\/(?!api|ws).*/, (req, res) => res.sendFile(path.join(distDir, 'index.html')));
 } else {
+  // Fallback to legacy vanilla JS frontend (moved to legacy/)
+  const legacyDir = path.join(__dirname, 'legacy');
   app.use('/assets', express.static(path.join(__dirname, 'assets')));
-  app.use('/css', express.static(path.join(__dirname, 'css')));
-  app.use('/js', express.static(path.join(__dirname, 'js'), {
+  app.use('/css', express.static(path.join(legacyDir, 'css')));
+  app.use('/js', express.static(path.join(legacyDir, 'js'), {
     setHeaders: (res) => {
       res.setHeader('Cache-Control', 'no-cache, must-revalidate');
     }
   }));
   app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(legacyDir, 'index.html'));
   });
   app.get('/favicon.ico', (req, res) => {
     res.sendFile(path.join(__dirname, 'assets', 'favicon.ico'));

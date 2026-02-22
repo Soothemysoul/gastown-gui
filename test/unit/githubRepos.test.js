@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { GITHUB_REPOS, getGitHubRepoForBead } from '../../js/shared/github-repos.js';
+import { GITHUB_REPOS, getGitHubRepoForBead } from '../../legacy/js/shared/github-repos.js';
 
 function clearRepos() {
   for (const key of Object.keys(GITHUB_REPOS)) {
