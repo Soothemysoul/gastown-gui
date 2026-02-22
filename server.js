@@ -1159,40 +1159,27 @@ app.post('/api/rigs', async (req, res) => {
     return res.status(400).json({ error: 'Name and URL are required' });
   }
 
-  // Detect default branch from GitHub API (handles main vs master)
-  // NOTE: --branch flag requires gt to be rebuilt from source (not in current binary)
-  const defaultBranch = await getDefaultBranch(url);
-  if (defaultBranch) {
-    console.log(`[Rig] Detected default branch: ${defaultBranch} (gt --branch flag pending rebuild)`);
-  }
+  // Detect if url is a local path (not a remote git URL)
+  const isLocalPath = /^[./~]/.test(url) || (!url.includes('://') && !url.startsWith('git@'));
 
-  // Rig operations can take 90+ seconds for large repos
-  // TODO: Pass --branch when gt is rebuilt: ['rig', 'add', name, url, '--branch', defaultBranch]
-  const result = await executeGT(['rig', 'add', name, url], { timeout: 120000 });
+  let result;
+  if (isLocalPath) {
+    // Expand ~ to home directory
+    const localPath = url.startsWith('~') ? os.homedir() + url.slice(1) : url;
+    console.log(`[Rig] Adopting local path: ${localPath}`);
+    // Run gt rig add with --adopt from the local directory
+    result = await executeGT(['rig', 'add', name, '--adopt'], { timeout: 120000, cwd: localPath });
+  } else {
+    // Remote git URL — clone
+    console.log(`[Rig] Cloning from remote URL: ${url}`);
+    result = await executeGT(['rig', 'add', name, url], { timeout: 120000 });
+  }
 
   // Check if rig add actually succeeded (not just "has output")
   // If the output contains "Error:", it's a real failure even if success=true
   const hasError = result.data && (result.data.includes('Error:') || result.data.includes('error:'));
 
   if (result.success && !hasError) {
-    // Create agent beads for witness and refinery (targeted, not gt doctor --fix)
-    const agentRoles = ['witness', 'refinery'];
-    for (const role of agentRoles) {
-      const beadResult = await executeBD([
-        'create',
-        `Setup ${role} for ${name}`,  // Title is required
-        '--type', 'agent',
-        '--agent-rig', name,
-        '--role-type', role,
-        '--silent'
-      ]);
-      if (!beadResult.success) {
-        console.warn(`[BD] Failed to create ${role} bead for ${name}:`, beadResult.error);
-      } else {
-        console.log(`[BD] Created ${role} agent bead for ${name}`);
-      }
-    }
-
     broadcast({ type: 'rig_added', data: { name, url } });
     res.json({ success: true, name, raw: result.data });
   } else {
