@@ -614,24 +614,18 @@ async function loadAgents() {
 }
 
 async function loadRigs(force = false) {
-  // Show loading state only if we don't have cached data
   const hasCache = state.getRigs().length > 0;
   if (!hasCache) {
     showLoadingState(elements.rigList, 'Loading rigs...');
-  } else {
-    // Show cached data immediately
-    renderRigList(elements.rigList, state.getRigs());
   }
 
   try {
-    // Get rigs from status (has more details than /api/rigs)
     const status = await api.getStatus(force);
     const rigs = status.rigs || [];
-    state.setStatus(status); // Update state
+    state.setStatus(status);
     renderRigList(elements.rigList, rigs);
   } catch (err) {
     console.error('[App] Failed to load rigs:', err);
-    // Only show error if we don't have cached data
     if (!hasCache) {
       elements.rigList.innerHTML = `
         <div class="empty-state">
