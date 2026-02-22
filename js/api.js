@@ -55,8 +55,8 @@ export const api = {
   },
 
   // === Status ===
-  getStatus() {
-    return this.get('/api/status');
+  getStatus(force = false) {
+    return this.get(force ? '/api/status?refresh=true' : '/api/status');
   },
 
   getHealth() {

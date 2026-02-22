@@ -168,7 +168,7 @@ async function init() {
 
   // Listen for rigs refresh (from agent controls)
   document.addEventListener(RIGS_REFRESH, () => {
-    loadRigs();
+    loadRigs(true); // force bypass server cache
   });
 
   // Listen for work refresh (from work actions)
@@ -613,7 +613,7 @@ async function loadAgents() {
   }
 }
 
-async function loadRigs() {
+async function loadRigs(force = false) {
   // Show loading state only if we don't have cached data
   const hasCache = state.getRigs().length > 0;
   if (!hasCache) {
@@ -625,7 +625,7 @@ async function loadRigs() {
 
   try {
     // Get rigs from status (has more details than /api/rigs)
-    const status = await api.getStatus();
+    const status = await api.getStatus(force);
     const rigs = status.rigs || [];
     state.setStatus(status); // Update state
     renderRigList(elements.rigList, rigs);
