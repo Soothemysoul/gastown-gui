@@ -83,6 +83,24 @@ export function renderRigList(container, rigs) {
       });
     });
 
+    // Park rig
+    card.querySelectorAll('[data-action="park"]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const rigName = btn.dataset.rigName;
+        await handleRigPark(rigName, btn);
+      });
+    });
+
+    // Boot rig
+    card.querySelectorAll('[data-action="boot"]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const rigName = btn.dataset.rigName;
+        await handleRigBoot(rigName, btn);
+      });
+    });
+
     // Remove rig
     card.querySelectorAll('[data-action="remove"]').forEach(btn => {
       btn.addEventListener('click', async (e) => {
@@ -171,6 +189,17 @@ function renderRigCard(rig, index) {
             GitHub
           </button>
         ` : ''}
+        ${runningAgents > 0 ? `
+          <button class="btn btn-sm btn-warning-ghost" data-action="park" data-rig-name="${rig.name}" title="Park rig (stop agents, disable auto-restart)">
+            <span class="material-icons">local_parking</span>
+            Park
+          </button>
+        ` : `
+          <button class="btn btn-sm btn-success-ghost" data-action="boot" data-rig-name="${rig.name}" title="Boot rig (start witness + refinery)">
+            <span class="material-icons">rocket_launch</span>
+            Boot
+          </button>
+        `}
         <button class="btn btn-sm btn-secondary" data-action="spawn" title="Spawn a new polecat">
           <span class="material-icons">add</span>
           Spawn Polecat
@@ -313,6 +342,56 @@ async function handleAgentRestart(rig, name, btn) {
     showToast(`Error: ${err.message}`, 'error');
   } finally {
     btn.innerHTML = originalIcon;
+    btn.disabled = false;
+  }
+}
+
+/**
+ * Handle rig park (stop agents, disable auto-restart)
+ */
+async function handleRigPark(rigName, btn) {
+  const originalContent = btn.innerHTML;
+  btn.innerHTML = '<span class="material-icons spinning">sync</span>';
+  btn.disabled = true;
+
+  try {
+    const result = await api.parkRig(rigName);
+    if (result.success) {
+      showToast(`Rig "${rigName}" parked`, 'success');
+      document.dispatchEvent(new CustomEvent(RIGS_REFRESH));
+      document.dispatchEvent(new CustomEvent(STATUS_REFRESH));
+    } else {
+      showToast(`Failed to park: ${result.error}`, 'error');
+    }
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
+  } finally {
+    btn.innerHTML = originalContent;
+    btn.disabled = false;
+  }
+}
+
+/**
+ * Handle rig boot (start witness + refinery)
+ */
+async function handleRigBoot(rigName, btn) {
+  const originalContent = btn.innerHTML;
+  btn.innerHTML = '<span class="material-icons spinning">sync</span>';
+  btn.disabled = true;
+
+  try {
+    const result = await api.bootRig(rigName);
+    if (result.success) {
+      showToast(`Rig "${rigName}" booted`, 'success');
+      document.dispatchEvent(new CustomEvent(RIGS_REFRESH));
+      document.dispatchEvent(new CustomEvent(STATUS_REFRESH));
+    } else {
+      showToast(`Failed to boot: ${result.error}`, 'error');
+    }
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'error');
+  } finally {
+    btn.innerHTML = originalContent;
     btn.disabled = false;
   }
 }

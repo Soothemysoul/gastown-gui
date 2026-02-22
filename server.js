@@ -1225,6 +1225,42 @@ app.delete('/api/rigs/:name', async (req, res) => {
   }
 });
 
+// Park a rig (stop agents, daemon won't auto-restart)
+app.post('/api/rigs/:name/park', async (req, res) => {
+  const { name } = req.params;
+  const result = await executeGT(['rig', 'park', name]);
+  if (result.success) {
+    broadcast({ type: 'rig_parked', data: { name } });
+    res.json({ success: true, name, raw: result.data });
+  } else {
+    res.status(500).json({ success: false, error: result.error });
+  }
+});
+
+// Unpark a rig (allow daemon to auto-restart)
+app.post('/api/rigs/:name/unpark', async (req, res) => {
+  const { name } = req.params;
+  const result = await executeGT(['rig', 'unpark', name]);
+  if (result.success) {
+    broadcast({ type: 'rig_unparked', data: { name } });
+    res.json({ success: true, name, raw: result.data });
+  } else {
+    res.status(500).json({ success: false, error: result.error });
+  }
+});
+
+// Boot a rig (start witness + refinery)
+app.post('/api/rigs/:name/boot', async (req, res) => {
+  const { name } = req.params;
+  const result = await executeGT(['rig', 'boot', name], { timeout: 60000 });
+  if (result.success) {
+    broadcast({ type: 'rig_booted', data: { name } });
+    res.json({ success: true, name, raw: result.data });
+  } else {
+    res.status(500).json({ success: false, error: result.error });
+  }
+});
+
 // === Crew Management ===
 
 // List all crews

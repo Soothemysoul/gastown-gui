@@ -4669,6 +4669,15 @@ select {
   color: #ef4444;
 }
 
+.btn-warning-ghost {
+  color: #f59e0b;
+}
+
+.btn-warning-ghost:hover {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
 .spinning {
   animation: spin 1s linear infinite;
 }
@@ -4964,6 +4973,16 @@ select {
 
 .btn-danger-ghost:hover {
   background: rgba(239, 68, 68, 0.15);
+}
+
+.btn-warning-ghost {
+  background: transparent;
+  color: #f59e0b;
+  border: none;
+}
+
+.btn-warning-ghost:hover {
+  background: rgba(245, 158, 11, 0.15);
 }
 
 /* === GitHub Issues === */

@@ -227,6 +227,18 @@ export const api = {
     return this.request(`/api/rigs/${encodeURIComponent(name)}`, { method: 'DELETE' });
   },
 
+  parkRig(name) {
+    return this.post(`/api/rigs/${encodeURIComponent(name)}/park`, {});
+  },
+
+  unparkRig(name) {
+    return this.post(`/api/rigs/${encodeURIComponent(name)}/unpark`, {});
+  },
+
+  bootRig(name) {
+    return this.post(`/api/rigs/${encodeURIComponent(name)}/boot`, {});
+  },
+
   // === Crew Management ===
   getCrews() {
     return this.get('/api/crews');
