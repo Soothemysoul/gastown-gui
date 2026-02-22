@@ -329,6 +329,14 @@ function handleWebSocketMessage(message) {
       }
       break;
 
+    case 'rig_removed':
+      // Rig was removed - refresh rigs list and status
+      api.getStatus(true); // Force refresh
+      if (state.currentView === 'rigs') {
+        loadRigs();
+      }
+      break;
+
     case 'mayor_message':
       // Mayor message sent - add to activity feed
       state.addEvent({

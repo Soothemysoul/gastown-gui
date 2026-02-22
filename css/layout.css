@@ -535,7 +535,12 @@ kbd {
 
 /* === Lists === */
 .convoy-list,
-.mail-list {
+.mail-list,
+.rig-list,
+.work-list,
+.crew-list,
+.formula-list,
+.issue-list {
   flex: 1;
   overflow-y: auto;
   padding: var(--space-md) var(--space-lg);
