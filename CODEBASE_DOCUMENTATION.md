@@ -225,6 +225,19 @@ frontend/src/constants/
 ├─ github-repos.js - Bead/rig → GitHub repo mapping (ported from js/shared/)
 └─ animations.js - Shared animation helpers (ported from js/shared/)
 
+frontend/src/composables/
+├─ useApi.js - HTTP client for /api/* (~50 methods, ported from js/api.js REST)
+└─ useWebSocket.js - WebSocket with exponential backoff reconnect + store dispatch (ported from js/api.js WS + app.js handler)
+
+frontend/src/stores/
+├─ statusStore.js - Town status, connection, hook (Pinia, ported from state.js + app.js)
+├─ convoyStore.js - Convoy list + filter (Pinia, ported from state.js + app.js)
+├─ agentStore.js - Agents + polecats (Pinia, ported from state.js + app.js)
+├─ workStore.js - Beads/work items + filter (Pinia, ported from app.js)
+├─ mailStore.js - Inbox, unread count, filter (Pinia, ported from state.js + app.js)
+├─ eventStore.js - Activity feed, max 500 events (Pinia, ported from state.js)
+└─ uiStore.js - Theme, sidebar, modal state (Pinia, ported from app.js)
+
 frontend/src/components/views/
 ├─ DashboardView.vue - Town status overview (/)
 ├─ AgentsView.vue - Agent grid and status (/agents)
