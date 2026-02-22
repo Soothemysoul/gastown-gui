@@ -261,14 +261,9 @@ frontend/src/components/shared/
 ├─ FilterGroup.vue - Toggle button group (v-model:modelValue)
 ├─ ToastContainer.vue - Teleported toast notifications (uses useToast)
 ├─ BaseModal.vue - Reusable modal wrapper (Teleport to #modal-target, v-model, Escape/overlay close)
-└─ Autocomplete.vue - Generic search input with dropdown (search/renderItem/onSelect props)
-
-frontend/src/components/modals/
-├─ SlingModal.vue - Bead sling dialog (Autocomplete for bead search + target dropdown with optgroups)
-├─ NewRigModal.vue - Add rig dialog (GitHub/GitLab repo picker with search/filter, local path support)
-├─ PeekModal.vue - Agent output viewer (auto-refresh via usePolling at 2s, transcript tab)
-├─ NewFormulaModal.vue - Formula create/edit form (name, description, template)
-└─ NewCrewModal.vue - Crew create form (name, rig selection)
+├─ Autocomplete.vue - Generic search input with dropdown (search/renderItem/onSelect props)
+├─ OnboardingWizard.vue - First-run setup wizard (ported from js/components/onboarding.js)
+└─ TutorialOverlay.vue - Interactive tutorial with spotlight highlights (ported from js/components/tutorial.js)
 
 frontend/src/components/modals/
 ├─ BaseModal.vue - Teleport-based modal shell: overlay, close-on-Esc/overlay, focus trap, header/body/footer slots
@@ -276,7 +271,12 @@ frontend/src/components/modals/
 ├─ NewBeadModal.vue - Create bead form (title, description, priority, labels), ported from modals.js
 ├─ MailComposeModal.vue - Compose mail form (recipient dropdown from agents, subject, message, priority), ported from modals.js
 ├─ HelpModal.vue - Help/glossary with tab navigation (concepts, roles, workflow, shortcuts), ported from modals.js + index.html
-└─ EscalationModal.vue - Escalation form (convoy ID, reason, priority), ported from modals.js
+├─ EscalationModal.vue - Escalation form (convoy ID, reason, priority), ported from modals.js
+├─ SlingModal.vue - Bead sling dialog (Autocomplete for bead search + target dropdown with optgroups)
+├─ NewRigModal.vue - Add rig dialog (GitHub/GitLab repo picker with search/filter, local path support)
+├─ PeekModal.vue - Agent output viewer (auto-refresh via usePolling at 2s, transcript tab)
+├─ NewFormulaModal.vue - Formula create/edit form (name, description, template)
+└─ NewCrewModal.vue - Crew create form (name, rig selection)
 
 frontend/src/components/views/
 ├─ DashboardView.vue - Town status overview: metrics cards, health banner, quick actions, agent stats, recent work, rig overview (/)
