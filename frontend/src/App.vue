@@ -27,6 +27,13 @@
     <NewFormulaModal />
     <NewCrewModal />
 
+    <!-- Detail modals -->
+    <ConvoyDetailModal />
+    <AgentDetailModal />
+    <NudgeModal />
+    <MailDetailModal />
+    <BeadDetailModal />
+
     <ToastContainer />
 
     <!-- Onboarding & Tutorial overlays -->
@@ -57,6 +64,11 @@ import NewRigModal from './components/modals/NewRigModal.vue'
 import PeekModal from './components/modals/PeekModal.vue'
 import NewFormulaModal from './components/modals/NewFormulaModal.vue'
 import NewCrewModal from './components/modals/NewCrewModal.vue'
+import ConvoyDetailModal from './components/modals/ConvoyDetailModal.vue'
+import AgentDetailModal from './components/modals/AgentDetailModal.vue'
+import NudgeModal from './components/modals/NudgeModal.vue'
+import MailDetailModal from './components/modals/MailDetailModal.vue'
+import BeadDetailModal from './components/modals/BeadDetailModal.vue'
 import OnboardingWizard from './components/shared/OnboardingWizard.vue'
 import TutorialOverlay from './components/shared/TutorialOverlay.vue'
 
