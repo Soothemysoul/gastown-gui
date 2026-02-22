@@ -166,14 +166,9 @@ setInterval(() => {
 // Middleware
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use('/css', express.static(path.join(__dirname, 'css')));
-// Add cache-control headers for JS files to improve load times
 app.use('/js', express.static(path.join(__dirname, 'js'), {
-  maxAge: '1h',
-  setHeaders: (res, filePath) => {
-    // Set cache-control for JS files
-    if (filePath.endsWith('.js')) {
-      res.setHeader('Cache-Control', 'public, max-age=3600');
-    }
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
   }
 }));
 app.get('/', (req, res) => {
