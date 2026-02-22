@@ -44,6 +44,7 @@ describe('StatusService', () => {
           },
         };
       },
+      exec: async () => ({ ok: true, stdout: JSON.stringify([{ rig: 'rig-one', name: 'agent-a', session_running: true }]), stderr: '' }),
     };
     const tmuxGateway = {
       listSessions: async () => 'gt-rig-one-agent-a: 1 windows (created)\ngt-mayor: 1 windows\n',
@@ -68,6 +69,7 @@ describe('StatusService', () => {
         gtGateway.calls++;
         return { ok: true, raw: '', data: { rigs: [] } };
       },
+      exec: async () => ({ ok: false, stdout: '' }),
     };
     const tmuxGateway = { listSessions: async () => '' };
 
@@ -102,6 +104,7 @@ describe('StatusService', () => {
           },
         };
       },
+      exec: async () => ({ ok: false, stdout: '' }),
     };
     const tmuxGateway = { listSessions: async () => '' };
 

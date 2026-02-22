@@ -84,7 +84,7 @@ describe('BDGateway', () => {
     const gateway = new BDGateway({ runner, gtRoot: '/tmp/gt' });
 
     await gateway.markDone({ beadId: 'bd-1', summary: 'ok' });
-    expect(runner.calls[0].args).toEqual(['close', 'bd-1', '-r', 'ok']);
+    expect(runner.calls[0].args).toEqual(['--no-daemon', 'close', 'bd-1', '-r', 'ok']);
   });
 
   it('park() uses bd defer with -r flag', async () => {
@@ -93,7 +93,7 @@ describe('BDGateway', () => {
     const gateway = new BDGateway({ runner, gtRoot: '/tmp/gt' });
 
     await gateway.park({ beadId: 'bd-2', reason: 'waiting on upstream' });
-    expect(runner.calls[0].args).toEqual(['defer', 'bd-2', '-r', 'waiting on upstream']);
+    expect(runner.calls[0].args).toEqual(['--no-daemon', 'defer', 'bd-2', '-r', 'waiting on upstream']);
   });
 
   it('release() uses bd update --status open', async () => {
@@ -102,7 +102,7 @@ describe('BDGateway', () => {
     const gateway = new BDGateway({ runner, gtRoot: '/tmp/gt' });
 
     await gateway.release('bd-3');
-    expect(runner.calls[0].args).toEqual(['update', 'bd-3', '--status', 'open']);
+    expect(runner.calls[0].args).toEqual(['--no-daemon', 'update', 'bd-3', '--status', 'open']);
   });
 
   it('reassign() uses bd update --assignee', async () => {
@@ -111,6 +111,6 @@ describe('BDGateway', () => {
     const gateway = new BDGateway({ runner, gtRoot: '/tmp/gt' });
 
     await gateway.reassign({ beadId: 'bd-4', target: 'mayor' });
-    expect(runner.calls[0].args).toEqual(['update', 'bd-4', '--assignee', 'mayor']);
+    expect(runner.calls[0].args).toEqual(['--no-daemon', 'update', 'bd-4', '--assignee', 'mayor']);
   });
 });
