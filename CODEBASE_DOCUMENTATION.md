@@ -198,7 +198,8 @@ refactoring-analysis/trace/ - Sanitized prompt/trace exports
 
 ```
 frontend/package.json - Vue 3, vue-router, pinia, vite, @vitejs/plugin-vue
-frontend/vite.config.js - Vite config: proxy /api→:7667, /ws→ws://:7667
+frontend/vite.config.js - Vite config: proxy /api→:7667, /ws→ws://:7667, build output → ../dist/
+frontend/vitest.config.js - Frontend test config (happy-dom, Vue plugin)
 frontend/index.html - Vite entry with Google Fonts (Inter) + Material Icons
 frontend/src/main.js - createApp + Pinia + Router; imports all CSS files
 frontend/src/App.vue - Root layout shell: header, sidebar, router-view, activity feed, status bar, toast, modal target
@@ -304,6 +305,15 @@ frontend/src/components/views/
 ├─ CrewsView.vue - Crew grid with status/remove, uses CrewCard (/crews)
 ├─ CrewCard.vue - Crew card: members, status, rig assignment, stats
 └─ HealthView.vue - Doctor diagnostics: summary banner, filter by status, fix actions (/health)
+
+frontend/src/stores/__tests__/ - Pinia store unit tests (vitest + happy-dom)
+├─ statusStore.test.js, convoyStore.test.js, agentStore.test.js
+├─ workStore.test.js, mailStore.test.js, eventStore.test.js
+└─ uiStore.test.js
+
+frontend/src/composables/__tests__/ - Composable unit tests
+├─ useApi.test.js, useToast.test.js, usePolling.test.js
+└─ useModal.test.js
 ```
 
 ## Key Patterns

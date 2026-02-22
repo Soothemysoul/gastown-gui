@@ -15,6 +15,9 @@
     "test:e2e": "vitest run test/e2e.test.js",
     "test:watch": "vitest watch",
     "test:ui": "vitest run --ui",
+    "test:frontend": "cd frontend && npx vitest run",
+    "build:frontend": "cd frontend && npm run build",
+    "dev:frontend": "cd frontend && npm run dev",
     "prepublishOnly": "npm test"
   },
   "dependencies": {

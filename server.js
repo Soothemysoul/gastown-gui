@@ -163,20 +163,26 @@ setInterval(() => {
   }
 }, CACHE_CLEANUP_INTERVAL);
 
-// Middleware
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
-app.use('/css', express.static(path.join(__dirname, 'css')));
-app.use('/js', express.static(path.join(__dirname, 'js'), {
-  setHeaders: (res) => {
-    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-  }
-}));
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-app.get('/favicon.ico', (req, res) => {
-  res.sendFile(path.join(__dirname, 'assets', 'favicon.ico'));
-});
+// Middleware — serve Vue production build from dist/ if it exists, else vanilla JS
+const distDir = path.join(__dirname, 'dist');
+if (fs.existsSync(distDir)) {
+  app.use(express.static(distDir));
+  app.get(/^\/(?!api|ws).*/, (req, res) => res.sendFile(path.join(distDir, 'index.html')));
+} else {
+  app.use('/assets', express.static(path.join(__dirname, 'assets')));
+  app.use('/css', express.static(path.join(__dirname, 'css')));
+  app.use('/js', express.static(path.join(__dirname, 'js'), {
+    setHeaders: (res) => {
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    }
+  }));
+  app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+  });
+  app.get('/favicon.ico', (req, res) => {
+    res.sendFile(path.join(__dirname, 'assets', 'favicon.ico'));
+  });
+}
 
 // Store connected WebSocket clients
 const clients = new Set();
