@@ -13,6 +13,13 @@
     <!-- Modal teleport target -->
     <div id="modal-target"></div>
 
+    <!-- Modals -->
+    <NewConvoyModal />
+    <NewBeadModal />
+    <MailComposeModal />
+    <HelpModal />
+    <EscalationModal />
+
     <ToastContainer />
   </div>
 </template>
@@ -29,6 +36,11 @@ import AppSidebar from './components/layout/AppSidebar.vue'
 import ActivityFeed from './components/layout/ActivityFeed.vue'
 import StatusBar from './components/layout/StatusBar.vue'
 import ToastContainer from './components/shared/ToastContainer.vue'
+import NewConvoyModal from './components/modals/NewConvoyModal.vue'
+import NewBeadModal from './components/modals/NewBeadModal.vue'
+import MailComposeModal from './components/modals/MailComposeModal.vue'
+import HelpModal from './components/modals/HelpModal.vue'
+import EscalationModal from './components/modals/EscalationModal.vue'
 
 const statusStore = useStatusStore()
 const eventStore = useEventStore()

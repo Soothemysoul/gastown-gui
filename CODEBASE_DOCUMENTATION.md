@@ -230,7 +230,8 @@ frontend/src/composables/
 ├─ useWebSocket.js - WebSocket with exponential backoff reconnect + store dispatch (ported from js/api.js WS + app.js handler)
 ├─ usePolling.js - Periodic async callback runner with auto-cleanup on unmount
 ├─ useKeyboardShortcuts.js - Global keyboard shortcuts (ported from app.js lines 742-851)
-└─ useToast.js - Reactive toast notification queue (ported from toast.js)
+├─ useToast.js - Reactive toast notification queue (ported from toast.js)
+└─ useModal.js - Open/close modals via uiStore (convenience wrapper)
 
 frontend/src/stores/
 ├─ statusStore.js - Town status, connection, hook (Pinia, ported from state.js + app.js)
@@ -259,6 +260,14 @@ frontend/src/components/shared/
 ├─ ErrorState.vue - Error icon + message + retry button
 ├─ FilterGroup.vue - Toggle button group (v-model:modelValue)
 └─ ToastContainer.vue - Teleported toast notifications (uses useToast)
+
+frontend/src/components/modals/
+├─ BaseModal.vue - Teleport-based modal shell: overlay, close-on-Esc/overlay, focus trap, header/body/footer slots
+├─ NewConvoyModal.vue - Create convoy form (name + issues), ported from modals.js
+├─ NewBeadModal.vue - Create bead form (title, description, priority, labels), ported from modals.js
+├─ MailComposeModal.vue - Compose mail form (recipient dropdown from agents, subject, message, priority), ported from modals.js
+├─ HelpModal.vue - Help/glossary with tab navigation (concepts, roles, workflow, shortcuts), ported from modals.js + index.html
+└─ EscalationModal.vue - Escalation form (convoy ID, reason, priority), ported from modals.js
 
 frontend/src/components/views/
 ├─ DashboardView.vue - Town status overview (/)
