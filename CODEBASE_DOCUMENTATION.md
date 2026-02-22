@@ -200,8 +200,8 @@ refactoring-analysis/trace/ - Sanitized prompt/trace exports
 frontend/package.json - Vue 3, vue-router, pinia, vite, @vitejs/plugin-vue
 frontend/vite.config.js - Vite config: proxy /api→:7667, /ws→ws://:7667
 frontend/index.html - Vite entry with Google Fonts (Inter) + Material Icons
-frontend/src/main.js - createApp + Pinia + Router; imports reset.css + variables.css
-frontend/src/App.vue - Root component with router-view
+frontend/src/main.js - createApp + Pinia + Router; imports all CSS files
+frontend/src/App.vue - Root layout shell: header, sidebar, router-view, activity feed, status bar, toast, modal target
 frontend/src/router/index.js - 11 lazy-loaded routes
 
 frontend/src/assets/styles/
@@ -227,7 +227,10 @@ frontend/src/constants/
 
 frontend/src/composables/
 ├─ useApi.js - HTTP client for /api/* (~50 methods, ported from js/api.js REST)
-└─ useWebSocket.js - WebSocket with exponential backoff reconnect + store dispatch (ported from js/api.js WS + app.js handler)
+├─ useWebSocket.js - WebSocket with exponential backoff reconnect + store dispatch (ported from js/api.js WS + app.js handler)
+├─ usePolling.js - Periodic async callback runner with auto-cleanup on unmount
+├─ useKeyboardShortcuts.js - Global keyboard shortcuts (ported from app.js lines 742-851)
+└─ useToast.js - Reactive toast notification queue (ported from toast.js)
 
 frontend/src/stores/
 ├─ statusStore.js - Town status, connection, hook (Pinia, ported from state.js + app.js)
@@ -237,6 +240,25 @@ frontend/src/stores/
 ├─ mailStore.js - Inbox, unread count, filter (Pinia, ported from state.js + app.js)
 ├─ eventStore.js - Activity feed, max 500 events (Pinia, ported from state.js)
 └─ uiStore.js - Theme, sidebar, modal state (Pinia, ported from app.js)
+
+frontend/src/components/layout/
+├─ AppHeader.vue - Town name, mayor command bar, nav tabs, theme toggle, refresh, connection status
+├─ NavTabs.vue - 11 router-link tabs with active class + mail badge
+├─ MayorCommandBar.vue - Input + send + view output button
+├─ MayorOutputPanel.vue - Draggable panel, auto-refresh via usePolling at 2s
+├─ AppSidebar.vue - Agent tree by rig/role, service controls, hook status, stats
+├─ ActivityFeed.vue - Event stream container with clear
+├─ ActivityEvent.vue - Single event with agent badges + type icons
+└─ StatusBar.vue - Hook status, status message, unread mail, keyboard hint
+
+frontend/src/components/shared/
+├─ AgentBadge.vue - Inline agent icon + name with role color
+├─ StatusBadge.vue - Status icon + label (running/idle/error etc.)
+├─ LoadingState.vue - Centered spinner + message
+├─ EmptyState.vue - Icon + message + slot for actions
+├─ ErrorState.vue - Error icon + message + retry button
+├─ FilterGroup.vue - Toggle button group (v-model:modelValue)
+└─ ToastContainer.vue - Teleported toast notifications (uses useToast)
 
 frontend/src/components/views/
 ├─ DashboardView.vue - Town status overview (/)
