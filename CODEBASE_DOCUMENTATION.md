@@ -14,6 +14,7 @@ TESTS:    test/ - Vitest unit + integration, Puppeteer E2E
 CONFIG:   vitest.config.js, vitest.unit.config.js, package.json
 ASSETS:   assets/ - Favicons + screenshots
 DOCS:     refactoring-analysis/ - Refactor plans/reports, CLI-COMPATIBILITY.md
+VUE:      frontend/ - Vue 3 + Vite SPA (new frontend, replacing vanilla JS)
 ```
 
 ## Backend — Entry & App
@@ -191,6 +192,30 @@ scripts/extract_user_prompts.mjs - Sanitized prompt log builder
 CLI-COMPATIBILITY.md - gt/bd CLI command compatibility audit
 refactoring-analysis/ - Refactor plans, reports, and analysis docs
 refactoring-analysis/trace/ - Sanitized prompt/trace exports
+```
+
+## Frontend (Vue 3 + Vite) — `frontend/`
+
+```
+frontend/package.json - Vue 3, vue-router, pinia, vite, @vitejs/plugin-vue
+frontend/vite.config.js - Vite config: proxy /api→:7667, /ws→ws://:7667
+frontend/index.html - Vite entry with Google Fonts (Inter) + Material Icons
+frontend/src/main.js - createApp + Pinia + Router
+frontend/src/App.vue - Root component with router-view
+frontend/src/router/index.js - 11 lazy-loaded routes
+
+frontend/src/components/views/
+├─ DashboardView.vue - Town status overview (/)
+├─ AgentsView.vue - Agent grid and status (/agents)
+├─ ConvoysView.vue - Convoy management (/convoys)
+├─ MailView.vue - Inbox, compose, reply (/mail)
+├─ IssuesView.vue - Beads issue tracker (/issues)
+├─ PrsView.vue - GitHub PR list (/prs)
+├─ FormulasView.vue - Formula editor/executor (/formulas)
+├─ WorkView.vue - Active work items (/work)
+├─ RigsView.vue - Rig management + polecat control (/rigs)
+├─ CrewsView.vue - Crew management (/crews)
+└─ HealthView.vue - System health check (/health)
 ```
 
 ## Key Patterns
