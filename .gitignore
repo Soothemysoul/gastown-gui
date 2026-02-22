@@ -33,3 +33,4 @@ dist/
 .runtime/
 .claude/commands/
 .logs/
+.beads/
