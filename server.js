@@ -1286,7 +1286,7 @@ app.get('/api/gitlab/repos', async (req, res) => {
       name: p.name,
       nameWithOwner: p.path_with_namespace,
       description: p.description || '',
-      url: p.ssh_url_to_repo || p.http_url_to_repo,
+      url: p.http_url_to_repo || p.ssh_url_to_repo,
       webUrl: p.web_url,
       isPrivate: p.visibility === 'private',
       pushedAt: p.last_activity_at,
