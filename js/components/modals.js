@@ -811,6 +811,17 @@ function initNewRigModal(element, data) {
     pickerBtn.disabled = false;
   }
 
+  // Auto-sanitize rig name: replace hyphens, dots, spaces with underscores
+  const nameInput = element.querySelector('[name="name"]');
+  nameInput?.addEventListener('input', () => {
+    const pos = nameInput.selectionStart;
+    const sanitized = nameInput.value.replace(/[-.\s]+/g, '_');
+    if (sanitized !== nameInput.value) {
+      nameInput.value = sanitized;
+      nameInput.setSelectionRange(pos, pos);
+    }
+  });
+
   // Set up GitHub repo picker button
   pickerBtn?.addEventListener('click', loadGitHubRepos, { once: true });
 
@@ -946,19 +957,16 @@ function getLanguageColor(lang) {
 }
 
 async function handleNewRigSubmit(form) {
-  const name = form.querySelector('[name="name"]')?.value?.trim();
+  const rawName = form.querySelector('[name="name"]')?.value?.trim();
   const url = form.querySelector('[name="url"]')?.value?.trim();
 
-  if (!name || !url) {
+  if (!rawName || !url) {
     showToast('Please enter both name and path', 'warning');
     return;
   }
 
-  // Validate name format (lowercase, numbers, hyphens only)
-  if (!/^[a-z0-9-]+$/.test(name)) {
-    showToast('Rig name must be lowercase letters, numbers, and hyphens only (no spaces)', 'warning');
-    return;
-  }
+  // gt rig add forbids hyphens, dots, spaces — replace with underscores
+  const name = rawName.replace(/[-.\s]+/g, '_');
 
   // Close modal immediately and show progress toast
   showToast(`Adding rig "${name}"...`, 'info');

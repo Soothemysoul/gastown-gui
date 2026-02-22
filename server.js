@@ -1148,10 +1148,17 @@ app.get('/api/setup/status', async (req, res) => {
 
 // Add a rig (project)
 app.post('/api/rigs', async (req, res) => {
-  const { name, url } = req.body;
+  let { name, url } = req.body;
 
   if (!name || !url) {
     return res.status(400).json({ error: 'Name and URL are required' });
+  }
+
+  // gt rig add forbids hyphens, dots, and spaces in rig names — replace with underscores
+  const sanitizedName = name.replace(/[-.\s]+/g, '_');
+  if (sanitizedName !== name) {
+    console.log(`[Rig] Sanitized name: "${name}" → "${sanitizedName}"`);
+    name = sanitizedName;
   }
 
   // Detect if url is a local path (not a remote git URL)
