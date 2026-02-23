@@ -17,9 +17,9 @@ Browser SPA backed by an Express server that wraps `gt`/`bd` CLI commands as HTT
 
 ### Backend (Express + WebSocket)
 
-- **Entry:** `server.js` — monolith Express server, partially refactored into `server/` modules
-- **Refactored path:** Gateway → Service → Route (see `server/gateways/`, `server/services/`, `server/routes/`)
-- **Legacy endpoints:** Mail, agents, nudge, polecat control, service controls still inline in `server.js`
+- **Entry:** `server.js` — Express server, wires Gateway → Service → Route modules
+- **Domain path:** Gateway → Service → Route (see `server/gateways/`, `server/services/`, `server/routes/`)
+- **Remaining inline:** Bead links, GitLab repos, health check (~300 lines total)
 - **CLI safety:** All commands use `execFile` (no shell) + `SafeSegment` input validation
 - **Real-time:** WebSocket server pipes `gt feed --json` output to clients
 - **CLI entry:** `bin/cli.js` — supports `start`, `doctor`, `version`, `help`
@@ -70,7 +70,7 @@ npm run test:frontend  # Vue frontend tests
 2. **CLI renames:** Several gt/bd commands were renamed upstream. See `CLI-COMPATIBILITY.md` for the full mapping. Key ones: `formula use` → `formula run --rig`, `bd done` → `bd close`, `bd park` → `bd defer`.
 3. **Port 7667:** Default port via `GASTOWN_PORT` env var. The CLI (`bin/cli.js`) also accepts `--port`.
 4. **Vue frontend needs build:** Run `npm run build:frontend` to generate `dist/`. Without it, Express falls back to legacy vanilla JS in `legacy/`.
-5. **server.js is partially refactored:** Some endpoints moved to `server/routes/`, others still inline (~1700 lines). Don't duplicate — check both before adding endpoints.
+5. **server.js is mostly refactored:** Nearly all endpoints are in `server/routes/` with matching services (~300 lines remain). Only bead links, GitLab repos, and health check are still inline.
 6. **SafeSegment rejects metacharacters:** Any rig/agent name with shell-special chars will be rejected. This is intentional security.
 7. **Mock server must match real server:** When adding/changing endpoints, update both `server.js` (or routes) AND `test/mock-server.js`.
 8. **Legacy files in legacy/:** The original vanilla JS frontend (js/, css/, index.html) has been moved to `legacy/`. New frontend work goes in `frontend/`.
