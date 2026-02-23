@@ -38,7 +38,7 @@
 
 Use {{variable}} for parameters."
         ></textarea>
-        <span class="form-hint">Supports <code>{{ '{{variable}}' }}</code> placeholders for parameters</span>
+        <span class="form-hint">Supports <code v-text="'{{variable}}'"></code> placeholders for parameters</span>
       </div>
 
       <div class="form-actions">
