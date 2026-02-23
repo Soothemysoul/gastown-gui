@@ -19,11 +19,11 @@ LEGACY:   legacy/ - Archived vanilla JS frontend (js/, css/, index.html)
 ## Backend — Entry & App
 
 ```
-server.js - Monolith Express server; imports refactored modules + legacy endpoints
-├─ Wires gateways → services → routes
+server.js - Express server; wires gateways → services → routes
+├─ All domain endpoints extracted to server/routes/ + server/services/
 ├─ WebSocket server for real-time events (gt feed)
-├─ Legacy endpoints still inline: mail, agents, nudge, polecat, service controls
-└─ ~1700 lines, partially refactored
+├─ Remaining inline: bead links, gitlab repos, health check
+└─ ~300 lines (down from ~1700)
 
 server/app/createApp.js - Express app factory with CORS config
 ```
@@ -75,6 +75,11 @@ server/services/BeadService.js - Bead CRUD via BDGateway
 server/services/WorkService.js - Work lifecycle (close, defer, reassign)
 server/services/GitHubService.js - PR/issue/repo queries via GitHubGateway
 server/services/TargetService.js - Available sling targets
+server/services/MailService.js - Mail inbox, send, read, mark read/unread, feed
+server/services/PolecatService.js - Agent list, polecat output/transcript/start/stop/restart, hook, nudge, mayor output
+server/services/RigService.js - Rig CRUD (add/remove/park/unpark/boot), setup status
+server/services/CrewService.js - Crew CRUD (list/add/remove/status)
+server/services/DoctorService.js - Doctor check + fix via GTGateway
 ```
 
 ## Backend — Routes
@@ -87,6 +92,12 @@ server/routes/beads.js - CRUD /api/beads, /api/bead/:id
 server/routes/work.js - POST /api/work/:id/{done,park,release,reassign}
 server/routes/github.js - GET /api/github/{prs,issues,repos}
 server/routes/targets.js - GET /api/targets
+server/routes/mail.js - GET/POST /api/mail, /api/mail/all, /api/mail/:id, mark read/unread
+server/routes/polecats.js - GET /api/agents, /api/polecat/:rig/:name/*, /api/hook, /api/nudge, /api/mayor/*
+server/routes/rigs.js - GET/POST/DELETE /api/rigs, park/unpark/boot, /api/setup/status
+server/routes/crews.js - GET/POST/DELETE /api/crews, /api/crew/:name/status
+server/routes/doctor.js - GET /api/doctor, POST /api/doctor/fix
+server/routes/services.js - POST /api/service/:name/{up,down,restart}, GET /api/service/:name/status
 ```
 
 ## Legacy Frontend (Archived) — `legacy/`
@@ -123,7 +134,8 @@ test/unit/ - 31 unit test files covering:
 ├─ Gateways: gtGateway, bdGateway, githubGateway, gitGateway, tmuxGateway
 ├─ Infrastructure: cacheRegistry, commandRunner, eventBus
 ├─ Services: statusService, targetService, githubService, convoyService,
-│            formulaService, beadService, workService
+│            formulaService, beadService, workService, mailService,
+│            polecatService, rigService, crewService, doctorService
 ├─ Routes: statusRoutes, targetRoutes, githubRoutes, convoyRoutes,
 │          formulaRoutes, beadRoutes, workRoutes
 ├─ Frontend: state, htmlUtils, quoteArg, formattingTime, animationsShared,
