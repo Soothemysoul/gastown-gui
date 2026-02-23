@@ -29,8 +29,10 @@ coverage/
 *.tgz
 dist/
 
-# Gas Town (added by gt)
+# Gas Town (added by gt) — protect from gt doctor --fix artifacts (#885)
 .runtime/
 .claude/commands/
 .logs/
 .beads/
+internal/
+PRIME.md
